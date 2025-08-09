@@ -1,17 +1,18 @@
-import { useState } from "react";
 import "./App.css";
 import "./assets/styles/Global.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/home/Home";
+import ToastHandlerContextProvider from "@contexts/ToastHandlerContext";
+import Layout from "@components/layout/Layout";
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-      </Routes>
+      <ToastHandlerContextProvider>
+        <Routes>
+          <Route path="/" element={<Layout children={<Home />} />} />
+        </Routes>
+      </ToastHandlerContextProvider>
     </Router>
   );
 }

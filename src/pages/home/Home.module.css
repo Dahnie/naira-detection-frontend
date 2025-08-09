@@ -1,0 +1,169 @@
+.app {
+  width: 100%;
+  height: 100vh;
+  overflow: auto;
+}
+
+.header {
+  margin: 2rem 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  column-gap: 2rem;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .header {
+    margin: 1.2rem 1.6rem;
+  }
+
+  .header h1 {
+    font-size: 20px;
+  }
+}
+
+/* Screen reader only content */
+.srOnly {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip link for keyboard navigation */
+.skipLink {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 9999;
+  transition: top 0.3s ease;
+}
+
+.skipLink:focus {
+  top: 6px;
+}
+
+/* Enhanced focus indicators */
+.app *:focus {
+  outline: 3px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.settingsButton {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .app {
+    background: #000;
+    color: #fff;
+  }
+
+  .header {
+    border-bottom: 2px solid #fff;
+  }
+
+  .settingsButton {
+    background: #fff;
+    color: #000;
+    border: 2px solid #fff;
+  }
+
+  .settingsButton:hover,
+  .settingsButton:focus {
+    background: #000;
+    color: #fff;
+    border: 2px solid #fff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .app *,
+  .app *::before,
+  .app *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Enhanced touch targets for mobile accessibility */
+.settingsButton {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+/* Focus management for main content */
+.main:focus {
+  outline: none;
+}
+
+/* Loading state styling */
+.main[aria-busy="true"] {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .app {
+    background: #1a1a1a;
+    color: #e0e0e0;
+  }
+
+  .header h1 {
+    color: #ffffff;
+  }
+
+  .settingsButton {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+  }
+
+  .settingsButton:hover,
+  .settingsButton:focus {
+    background: #555;
+    border-color: #777;
+  }
+}
+
+/* Ensure live region is never visible but accessible */
+.app [aria-live] {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.settingsButton {
+  /* existing styles... */
+  min-width: 48px;
+  min-height: 48px;
+}

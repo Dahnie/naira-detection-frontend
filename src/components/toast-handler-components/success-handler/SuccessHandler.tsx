@@ -1,0 +1,82 @@
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import styles from "./SuccessHandler.module.css";
+import { ToastHandlerType } from "@models/ToastHandlerTypes";
+import cancelIcon from "@assets/images/svg/cancel-icon.svg";
+import successTickIcon from "@assets/images/svg/success-tick-icon.svg";
+import { AnimatePresence, motion } from "framer-motion";
+
+interface IProps {
+  successHandlerObj: ToastHandlerType;
+  className?: string;
+}
+
+const SuccessHandler = ({ successHandlerObj, className }: IProps) => {
+  // Functions, States and Variables
+  // Ref
+  const toastHandlerRef = useRef<HTMLDivElement | null>(null);
+  // States
+  const [show, setShow] = useState(false);
+  const [toastHandlerOffsetWidth, setToastHandlerOffsetWidth] = useState(0);
+
+  // Functions
+  // Handle Set Toast Offset Width
+  const handleSetToastHandlerOffsetWidth = function () {
+    if (toastHandlerRef.current) {
+      setToastHandlerOffsetWidth(toastHandlerRef.current.offsetWidth / 2);
+    }
+  };
+
+  // UseEffect
+  useLayoutEffect(() => {
+    if (show) {
+      // Set the offset width of the error handler on screen resize
+      window.addEventListener("resize", handleSetToastHandlerOffsetWidth);
+
+      handleSetToastHandlerOffsetWidth();
+      return () => {
+        window.removeEventListener("resize", handleSetToastHandlerOffsetWidth);
+      };
+    }
+  }, [show]);
+
+  useEffect(() => {
+    setShow(false);
+    if (successHandlerObj.show) setShow(true);
+  }, [successHandlerObj]);
+
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          ref={toastHandlerRef}
+          className={`${styles.toast_handler_container} ${className}`}
+          initial={{ opacity: 0, y: -80 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -80 }}
+          style={{ left: `calc(50vw - ${toastHandlerOffsetWidth}px)` }}
+        >
+          <div className={styles.toast_handler_header}>
+            {/* Left Column */}
+            <div className={styles.toast__left_col}>
+              <div className={styles.error_icon_wrapper}>
+                <img src={successTickIcon} alt="erorr icon" />
+              </div>
+              <div className={styles.toast_handler_title}>
+                {successHandlerObj.message}
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className={styles.cancel_button_wrapper}>
+              <button onClick={() => setShow(false)}>
+                <img src={cancelIcon} alt="cancel icon" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default SuccessHandler;

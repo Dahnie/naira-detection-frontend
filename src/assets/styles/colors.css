@@ -1,0 +1,30 @@
+:root {
+  --col-text-primary: #27292c;
+  --col-text-secondary: #6b7178;
+  --col-text-white: #ffffff;
+  --col-text-off-white: #f5f5f5;
+  --col-text-label: #b0b0b0;
+  --col-text-dark: #555555;
+  --col-brand-primary: #a4343a;
+  --col-background-main: #f4f5f7;
+  --col-background-white: #ffffff;
+  --col-background-brand2: #f7e5e5;
+  --col-grey-20: #e8ebed;
+  --col-grey-40: #98a4ae;
+  --col-grey-100: #0d141a;
+  --col-modal-backdrop: #98a4ae;
+  --col-new-accent02: #005b5f;
+  --col-new-accent03: #3a99d8;
+  --col-new-accent05: #ff8c00;
+  --col-new-accent06: #00bfae;
+  --col-new-accent07: #ff6f61;
+  --col-new-borders: #e0e0e0;
+  --col-new-error1: #ff3b30;
+  --col-new-error2: #ffb3b0;
+  --col-new-success1: #4caf7f;
+  --col-new-success2: #a5d6a7;
+  --col-others-border: #ececec;
+  --col-others-icon: #9aa2ac;
+  --col-old-charcoal: #253746;
+  --col-background-disabled: rgba(176, 176, 176, 0.15);
+}

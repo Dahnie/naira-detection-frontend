@@ -1,159 +1,501 @@
+/* Add these styles to your existing Camera.module.css */
+
+/* Screen reader only content */
+.srOnly {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Enhanced focus indicators */
+.cameraContainer *:focus {
+  outline: 3px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* Camera container improvements */
 .cameraContainer {
+  max-width: 1200px;
+  height: 100%;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Video container with accessibility features */
+.videoContainer {
   position: relative;
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  background-color: #000;
-  width: 100%;
+  background: #1a1a1a;
   height: 100%;
+  width: 100%;
+  min-height: 500px;
 }
 
 .videoFeed {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 8px;
 }
 
+/* Enhanced overlay guides */
 .overlayGuides {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  right: 0;
+  bottom: 0;
   pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  z-index: 2;
 }
 
 .centerGuide {
-  width: 80%;
-  height: 60%;
-  border: 2px dashed rgba(255, 255, 255, 0.7);
-  border-radius: 8px;
-}
-
-.actionButtons {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: space-around;
-  padding: 16px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 380px;
+  max-height: 280px;
+  width: 40%;
+  height: 30%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(1px);
 }
 
-.captureButton,
-.uploadButton {
+@media (max-width: 600px) {
+  .centerGuide {
+    width: 65%;
+    height: 35%;
+  }
+}
+
+.guideCorners {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #00ff88;
+}
+
+.corner[data-position="top-left"] {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 8px 0 0 0;
+}
+
+.corner[data-position="top-right"] {
+  top: -2px;
+  right: -2px;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 8px 0 0;
+}
+
+.corner[data-position="bottom-left"] {
+  bottom: -2px;
+  left: -2px;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 8px;
+}
+
+.corner[data-position="bottom-right"] {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 8px 0;
+}
+
+.guideText {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 4px 12px;
+  border-radius: 16px;
+  backdrop-filter: blur(4px);
+}
+
+/* Flash effect */
+.flashEffect {
+  background: rgba(255, 255, 255, 0.8) !important;
+  animation: flashAnimation 0.2s ease-out;
+}
+
+@keyframes flashAnimation {
+  0% {
+    background: rgba(255, 255, 255, 0);
+  }
+  50% {
+    background: rgba(255, 255, 255, 0.8);
+  }
+  100% {
+    background: rgba(255, 255, 255, 0);
+  }
+}
+
+/* Status indicator */
+.statusIndicator {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+}
+
+.statusDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.statusDot.ready {
+  background: #00ff88;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+}
+
+.statusDot.loading {
+  background: #ffa500;
+  animation: pulse 2s infinite;
+}
+
+/* Loading overlay */
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  border: none;
+  color: #fff;
+  z-index: 10;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #fff;
   border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Camera controls layout */
+.cameraControls {
+  padding: 20px;
+  background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+  border-top: 1px solid #333;
+}
+
+.secondaryControls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.controlButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.9rem;
   cursor: pointer;
-  font-weight: 600;
-  transition: transform 0.2s, background-color 0.2s;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.controlButton:hover,
+.controlButton:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #0066cc;
+  transform: translateY(-1px);
+}
+
+.controlButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.controlButton:active {
+  transform: translateY(1px);
+}
+
+/* Flash button states */
+.flashButton[aria-pressed="true"] {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+/* Main action buttons */
+.actionButtons {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+  align-items: center;
 }
 
 .captureButton {
-  background-color: var(--primary-color);
-  color: var(--secondary-color);
-  width: 70px;
-  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  border: 4px solid #fff;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  touch-action: manipulation;
+  box-shadow: 0 4px 16px rgba(255, 107, 107, 0.4);
 }
 
-.uploadButton {
-  background-color: rgba(255, 255, 255, 0.9);
-  color: var(--text-color);
-  width: 60px;
-  height: 60px;
-}
-
-.captureButton svg,
-.uploadButton svg {
-  margin-bottom: 4px;
-}
-
-.captureButton:hover:not(:disabled),
-.uploadButton:hover:not(:disabled) {
+.captureButton:hover,
+.captureButton:focus {
   transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+  border-color: #0066cc;
 }
 
-.captureButton:active:not(:disabled),
-.uploadButton:active:not(:disabled) {
+.captureButton:active {
   transform: scale(0.95);
 }
 
 .captureButton:disabled {
-  background-color: #666;
-  opacity: 0.7;
+  background: #666;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.captureButton.capturing {
+  animation: captureAnimation 0.6s ease-in-out;
 }
 
 .fileInput {
-  display: none;
+  display: none; /* Hide the default file input */
 }
 
+@keyframes captureAnimation {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.9);
+    background: #fff;
+    color: #ff6b6b;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.uploadButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 56px;
+  min-width: 56px;
+  padding: 16px 20px;
+  background: rgba(59, 130, 246, 0.2);
+  border: 2px solid #3b82f6;
+  border-radius: 16px;
+  color: #3b82f6;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.uploadButton:hover,
+.uploadButton:focus {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.uploadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.buttonText {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.buttonLabel {
+  font-size: 0.8rem;
+  margin-left: 4px;
+}
+
+/* Error states */
 .errorContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
+  padding: 40px 20px;
   text-align: center;
-  padding: 20px;
+  color: #fff;
+  min-height: 400px;
+}
+
+.errorIcon {
+  margin-bottom: 24px;
+  opacity: 0.7;
 }
 
 .errorMessage {
-  margin-bottom: 20px;
-  font-size: 16px;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  margin-bottom: 32px;
+  max-width: 400px;
+  color: #e0e0e0;
+}
+
+.errorActions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .retryButton {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  padding: 12px 24px;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 24px;
-  font-weight: 600;
+  padding: 12px 20px;
+  background: #10b981;
+  border: 2px solid #10b981;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
-@media (min-width: 768px) {
-  .actionButtons {
-    padding: 24px;
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .cameraContainer {
+    background: #000;
+    color: #fff;
+    border: 2px solid #fff;
+  }
+
+  .videoContainer {
+    background: #000;
+  }
+
+  .overlayGuides {
+    border-color: #fff;
+  }
+
+  .statusDot.ready {
+    box-shadow: 0 0 8px #00ff88;
+  }
+
+  .statusDot.loading {
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 8px #ffa500;
+  }
+
+  .loadingOverlay {
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
   }
 }
 
-/* For devices with coarse pointers (touch screens) */
-@media (pointer: coarse) {
-  .captureButton {
-    width: 80px;
-    height: 80px;
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .cameraContainer {
+    background: #121212;
+    color: #e0e0e0;
+    border: 2px solid #333;
   }
 
-  .uploadButton {
-    width: 70px;
-    height: 70px;
+  .videoContainer {
+    background: #1a1a1a;
   }
-}
 
-/* Reduced motion preferences */
-@media (prefers-reduced-motion) {
-  .captureButton:hover:not(:disabled),
-  .uploadButton:hover:not(:disabled),
-  .captureButton:active:not(:disabled),
-  .uploadButton:active:not(:disabled) {
-    transform: none;
+  .overlayGuides {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .statusDot.ready {
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+  }
+
+  .statusDot.loading {
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
+  }
+
+  .loadingOverlay {
+    background: rgba(18, 18, 18, 0.9);
+    color: #fff;
   }
 }

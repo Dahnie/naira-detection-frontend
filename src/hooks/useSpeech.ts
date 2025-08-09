@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { getPreference } from "../utils/preferences";
 
-interface UseSpeechOptions {
-  autoSpeak?: boolean;
-}
+// interface UseSpeechOptions {
+//   autoSpeak?: boolean;
+// }
 
 interface UseSpeechReturn {
-  speak: (text: string) => void;
+  speak: (text: string, bypassSupport?: boolean) => void;
   isSpeaking: boolean;
   stop: () => void;
   supported: boolean;
@@ -15,17 +15,16 @@ interface UseSpeechReturn {
 /**
  * Custom hook for speech synthesis functionality
  */
-export function useSpeech({
-  autoSpeak = true,
-}: UseSpeechOptions = {}): UseSpeechReturn {
+export function useSpeech(): UseSpeechReturn {
+  const autoSpeak = getPreference("autoSpeak", false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [supported, setSupported] = useState(false);
 
   // Check if speech synthesis is supported
   useEffect(() => {
-    const isSupported = "speechSynthesis" in window;
+    const isSupported = "speechSynthesis" in window && autoSpeak;
     setSupported(isSupported);
-  }, []);
+  }, [autoSpeak]);
 
   // Clean up any ongoing speech when the component unmounts
   useEffect(() => {
@@ -39,9 +38,9 @@ export function useSpeech({
   /**
    * Speak the provided text
    */
-  const speak = (text: string) => {
-    if (!supported || !text) return;
-
+  const speak = (text: string, bypassSupport = false) => {
+    const isSpeechSupported = bypassSupport || supported;
+    if (!isSpeechSupported || !text) return;
     // Stop any current speech
     stop();
 

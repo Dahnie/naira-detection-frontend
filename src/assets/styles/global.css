@@ -142,6 +142,17 @@ input:focus {
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --border-color: #333333;
+    --primary-color: #333333;
+    --secondary-color: #a0aec0;
+  }
+}
+
+/* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion) {
   * {
     transition: none !important;

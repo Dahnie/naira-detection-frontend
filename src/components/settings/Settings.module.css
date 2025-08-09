@@ -1,3 +1,16 @@
+/* Screen reader only text utility */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .modal {
   display: flex;
   position: fixed;
@@ -5,7 +18,12 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(
+    0,
+    0,
+    0,
+    0.75
+  ); /* Increased opacity for better contrast */
   z-index: 100;
   overflow: auto;
   justify-content: center;
@@ -20,6 +38,14 @@
   overflow: hidden;
   animation: slideUp 0.3s ease;
   width: 90%;
+  /* High contrast border for partially sighted users */
+  border: 2px solid var(--primary-color);
+  /* Ensure focus is visible on modal container */
+  outline: none;
+}
+
+.modalContent:focus {
+  box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.5);
 }
 
 .modalHeader {
@@ -33,10 +59,20 @@
 
 .modalHeader h2 {
   margin: 0;
+  /* Ensure sufficient contrast */
+  font-weight: 700;
+  font-size: 1.25rem;
 }
 
 .settingsOptions {
   padding: var(--spacing-md);
+}
+
+/* Fieldset for semantic grouping */
+.settingFieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
 }
 
 .settingItem {
@@ -44,26 +80,56 @@
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start; /* Changed to flex-start for better text layout */
+  gap: var(--spacing-sm);
+  min-height: 60px; /* Minimum touch target size */
 }
 
 .settingItem:last-child {
   border-bottom: none;
   justify-content: center;
+  align-items: center;
 }
 
-/* Switch toggle */
+/* Enhanced setting labels with descriptions */
+.settingLabel {
+  flex: 1;
+}
+
+.settingLabel label {
+  font-weight: 600;
+  color: var(--text-color);
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.settingDescription {
+  font-size: var(--font-size-sm);
+  color: var(--text-color);
+  opacity: 0.8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Enhanced switch with better accessibility */
 .switch {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 24px;
+  width: 60px; /* Increased size for easier interaction */
+  height: 32px; /* Increased height */
+  flex-shrink: 0;
 }
 
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
+}
+
+.switch input:focus + .slider {
+  outline: 3px solid var(--focus-color, #4a90e2);
+  outline-offset: 2px;
 }
 
 .slider {
@@ -75,90 +141,168 @@
   bottom: 0;
   background-color: #ccc;
   transition: 0.4s;
+  border: 2px solid transparent;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
+  height: 24px; /* Adjusted for new switch size */
+  width: 24px;
   left: 4px;
   bottom: 4px;
   background-color: white;
   transition: 0.4s;
+  border-radius: 50%;
 }
 
 input:checked + .slider {
   background-color: var(--primary-color);
 }
 
-input:focus + .slider {
-  box-shadow: 0 0 1px var(--primary-color);
-}
-
 input:checked + .slider:before {
-  transform: translateX(26px);
+  transform: translateX(28px); /* Adjusted for new switch size */
 }
 
 .slider.round {
-  border-radius: 24px;
+  border-radius: 32px;
 }
 
-.slider.round:before {
-  border-radius: 50%;
+/* Enhanced range inputs */
+.rangeContainer {
+  width: 140px;
+  flex-shrink: 0;
 }
 
-/* Range inputs */
 input[type="range"] {
   width: 100%;
+  height: 32px; /* Increased height for easier interaction */
   margin: var(--spacing-sm) 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Range track styling */
+input[type="range"]::-webkit-slider-track {
+  background: var(--border-color);
+  height: 6px;
+  border-radius: 3px;
+  border: none;
+}
+
+input[type="range"]::-moz-range-track {
+  background: var(--border-color);
+  height: 6px;
+  border-radius: 3px;
+  border: none;
+}
+
+/* Range thumb styling with enhanced focus */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--primary-color);
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  background: var(--primary-color);
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Enhanced focus states for range inputs */
+input[type="range"]:focus {
+  outline: none;
+}
+
+input[type="range"]:focus::-webkit-slider-thumb {
+  outline: 3px solid var(--focus-color, #4a90e2);
+  outline-offset: 2px;
+}
+
+input[type="range"]:focus::-moz-range-thumb {
+  outline: 3px solid var(--focus-color, #4a90e2);
+  outline-offset: 2px;
 }
 
 .rangeValues {
   display: flex;
   justify-content: space-between;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--text-color);
   opacity: 0.8;
+  margin-top: var(--spacing-xs);
 }
 
+/* Enhanced button styles with better focus indicators */
 .iconBtn {
   background: none;
   border: none;
   color: inherit;
   cursor: pointer;
-  padding: var(--spacing-xs);
+  padding: var(--spacing-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  min-width: 48px; /* Minimum touch target */
+  min-height: 48px;
   border-radius: var(--border-radius-circle);
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
 }
 
 .iconBtn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.iconBtn:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.iconBtn:active {
+  transform: scale(0.95);
 }
 
 .secondaryBtn {
   background-color: var(--secondary-color);
   color: var(--text-color);
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--border-color);
   border-radius: var(--border-radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   cursor: pointer;
   font-weight: 600;
-  transition: transform 0.2s, background-color 0.2s;
+  font-size: 1rem;
+  min-height: 48px; /* Minimum touch target */
+  min-width: 120px;
+  transition: transform 0.2s, background-color 0.2s, border-color 0.2s;
 }
 
 .secondaryBtn:hover {
-  transform: scale(1.05);
+  transform: scale(1.02);
   background-color: var(--border-color);
+  border-color: var(--primary-color);
+}
+
+.secondaryBtn:focus {
+  outline: 3px solid var(--focus-color, #4a90e2);
+  outline-offset: 2px;
 }
 
 .secondaryBtn:active {
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 
 @keyframes slideUp {
@@ -172,6 +316,43 @@ input[type="range"] {
   }
 }
 
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .modal {
+    background-color: rgba(0, 0, 0, 0.9);
+  }
+
+  .modalContent {
+    border: 3px solid var(--primary-color);
+  }
+
+  .switch,
+  .slider,
+  input[type="range"] {
+    border: 2px solid var(--text-color);
+  }
+
+  .iconBtn,
+  .secondaryBtn {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .settingDescription {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  input[type="range"]::-webkit-slider-track {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  input[type="range"]::-moz-range-track {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
 /* Media queries for responsiveness */
 @media (min-width: 768px) {
   .modalContent {
@@ -179,14 +360,34 @@ input[type="range"] {
   }
 }
 
+@media (max-width: 480px) {
+  .settingItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+
+  .switch,
+  .rangeContainer {
+    align-self: center;
+  }
+}
+
 /* Reduced motion preferences */
-@media (prefers-reduced-motion) {
+@media (prefers-reduced-motion: reduce) {
   .modalContent {
     animation: none;
   }
 
   .secondaryBtn:hover,
-  .secondaryBtn:active {
+  .secondaryBtn:active,
+  .iconBtn:hover,
+  .iconBtn:active {
     transform: none;
+  }
+
+  .slider,
+  .slider:before {
+    transition: none;
   }
 }
