@@ -1,5 +1,5 @@
 import "./App.css";
-import "./assets/styles/Global.css";
+import "./assets/styles/global.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/home/Home";
 import ToastHandlerContextProvider from "@contexts/ToastHandlerContext";

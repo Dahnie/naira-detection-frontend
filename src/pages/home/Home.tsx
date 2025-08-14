@@ -212,13 +212,10 @@ const Home: React.FC = () => {
     }
 
     let resultMessage = "";
-    if (
-      detectionResult.denominations &&
-      detectionResult.denominations.length > 0
-    ) {
-      const topResult = detectionResult.denominations[0];
+    if (detectionResult.top_detection) {
+      const topResult = detectionResult.top_detection;
       const confidencePercent = Math.round(topResult.confidence * 100);
-      resultMessage = `Detected ${topResult.value} Naira note with ${confidencePercent} percent confidence.`;
+      resultMessage = `Detected ${topResult.denomination} note with ${confidencePercent} percent confidence.`;
 
       // Add tips based on confidence
       if (topResult.confidence < 0.7) {
@@ -370,11 +367,9 @@ const Home: React.FC = () => {
             <Result
               imageUrl={resultImageUrl || ""}
               denomination={
-                detectionResult?.denominations?.[0]?.value
-                  ? `${detectionResult.denominations[0].value} Naira`
-                  : null
+                detectionResult?.top_detection?.denomination || null
               }
-              confidence={detectionResult?.denominations?.[0]?.confidence || 0}
+              confidence={detectionResult?.top_detection?.confidence || 0}
               onBack={resetToCamera}
               onNewScan={resetToCamera}
               onSpeak={handleSpeakResult}
