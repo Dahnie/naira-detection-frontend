@@ -34,7 +34,8 @@
       "@models/*": ["models/*"],
       "@pages/*": ["pages/*"],
       "@utils/*": ["utils/*"],
-      "@contexts/*": ["contexts/*"]
+      "@contexts/*": ["contexts/*"],
+      "@api/*": ["api/*"]
     }
   }
 }

@@ -1,3 +1,4 @@
+import { apiBaseUrl } from "@api/config";
 import { handleAPIError } from "./handleAPIError";
 
 export interface DetectionResult {
@@ -13,6 +14,7 @@ export interface DetectionResult {
  * @param imageBlob - Image blob to process
  * @returns Promise with detection results
  */
+
 export async function detectNairaNote(imageBlob: Blob) {
   // ): Promise<DetectionResult> {
   try {
@@ -21,13 +23,10 @@ export async function detectNairaNote(imageBlob: Blob) {
     formData.append("file", imageBlob);
 
     // Call detection API
-    const response = await fetch(
-      "http://localhost:8000/api/detection/detect/image",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
+    const response = await fetch(`${apiBaseUrl}/api/detection/detect/image`, {
+      method: "POST",
+      body: formData,
+    });
     console.log({ response });
     if (!response.ok) {
       handleAPIError(response);
