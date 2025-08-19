@@ -313,7 +313,6 @@ const Result: React.FC<ResultProps> = ({
               className={styles.denominationText}
               aria-describedby="denomination-description"
               role="status"
-              aria-live="polite"
             >
               {denomination || "No Naira note detected"}
             </h2>
