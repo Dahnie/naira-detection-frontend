@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useCamera } from "@hooks/useCamera";
 import styles from "./Camera.module.css";
 import {
@@ -15,150 +15,215 @@ import {
 } from "@utils/accessibiltyHelper";
 import { toastHandler } from "@utils/toastHandlerSingleton";
 import { useSpeech } from "@hooks/useSpeech";
+import Loader from "@components/loader/Loader";
 
+// Types
 interface CameraProps {
   onCapture: (image: Blob) => void;
   onFileSelect: (file: File) => void;
   isLoading: boolean;
 }
 
+interface KeyboardHandler {
+  [key: string]: () => void;
+}
+
+// Constants
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const VIBRATION_PATTERNS = {
+  CAPTURE: 100,
+  SUCCESS: [50, 50, 50],
+  ERROR: 200,
+  GENERAL: 50,
+  FLASH: 30,
+};
+
 const Camera: React.FC<CameraProps> = ({
   onCapture,
   onFileSelect,
   isLoading,
 }) => {
+  // Hooks
   const { speak: speakChange } = useSpeech();
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const liveRegionRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const captureButtonRef = useRef<HTMLButtonElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [flashEnabled, setFlashEnabled] = useState(false);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [permissionDenied, setPermissionDenied] = useState(false);
-
   const {
     videoRef: cameraVideoRef,
     isStreamReady,
     error,
     captureImage,
     switchCamera,
-    // stopCamera,
   } = useCamera();
 
-  // Merge refs for video element
-  useEffect(() => {
-    if (cameraVideoRef.current && videoRef.current) {
-      videoRef.current = cameraVideoRef.current;
-    }
-  }, [cameraVideoRef]);
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const liveRegionRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const captureButtonRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Handle first user interaction for audio announcements
-  useEffect(() => {
-    const handleFirstInteraction = () => {
-      if (!hasUserInteracted) {
-        setHasUserInteracted(true);
-        announceToScreenReader(
-          liveRegionRef,
-          "Camera interface ready. Position naira note within the frame guide and press capture button or spacebar to take photo.",
-          "polite"
+  // State
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+
+  // Utility functions
+  const announceMessage = useCallback(
+    (message: string, priority: "polite" | "assertive" = "polite") => {
+      announceToScreenReader(liveRegionRef, message, priority);
+    },
+    []
+  );
+
+  const announceAndSpeak = useCallback(
+    (message: string, priority: "polite" | "assertive" = "polite") => {
+      announceMessage(message, priority);
+      speakChange(message);
+    },
+    [announceMessage, speakChange]
+  );
+
+  const validateFile = useCallback((file: File): string | null => {
+    if (!file.type.startsWith("image/")) {
+      return "Invalid file type. Please select an image file (JPG, PNG, etc.).";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return "File too large. Please select an image smaller than 10MB.";
+    }
+    return null;
+  }, []);
+
+  const addFlashEffect = useCallback(() => {
+    if (overlayRef.current) {
+      overlayRef.current.classList.add(styles.flashEffect);
+      setTimeout(() => {
+        overlayRef.current?.classList.remove(styles.flashEffect);
+      }, 200);
+    }
+  }, []);
+
+  // Event handlers
+  const handleCapture = useCallback(async () => {
+    if (!isStreamReady || isCapturing || isLoading) {
+      if (!isStreamReady) {
+        announceMessage(
+          "Camera not ready. Please wait for camera to initialize or use upload option.",
+          "assertive"
         );
       }
-    };
-
-    document.addEventListener("click", handleFirstInteraction, { once: true });
-    document.addEventListener("keydown", handleFirstInteraction, {
-      once: true,
-    });
-    document.addEventListener("touchstart", handleFirstInteraction, {
-      once: true,
-    });
-
-    return () => {
-      document.removeEventListener("click", handleFirstInteraction);
-      document.removeEventListener("keydown", handleFirstInteraction);
-      document.removeEventListener("touchstart", handleFirstInteraction);
-    };
-  }, [hasUserInteracted]);
-
-  // Camera status announcements
-  useEffect(() => {
-    if (error) {
-      const errorMessage = error.includes("permission")
-        ? "Camera permission denied. Please allow camera access or use the upload option to select an image file."
-        : `Camera error: ${error}. Please try refreshing the page or use the upload option.`;
-
-      setPermissionDenied(error.includes("permission"));
-      announceToScreenReader(liveRegionRef, errorMessage, "assertive");
-      speakChange(errorMessage);
-    } else if (isStreamReady) {
-      const message =
-        "Camera is ready. You can now capture images of naira notes.";
-      announceToScreenReader(liveRegionRef, message, "polite");
-      speakChange(message);
+      return;
     }
-  }, [error, isStreamReady]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Skip if user is typing in an input
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
+    setIsCapturing(true);
+    announceMessage("Capturing image...", "assertive");
+    triggerVibration(VIBRATION_PATTERNS.CAPTURE);
+
+    try {
+      addFlashEffect();
+
+      const imageBlob = await captureImage();
+      if (imageBlob) {
+        announceMessage(
+          "Image captured successfully. Processing for detection...",
+          "assertive"
+        );
+        onCapture(imageBlob);
+        triggerVibration(VIBRATION_PATTERNS.SUCCESS);
+      } else {
+        throw new Error("Failed to capture image");
+      }
+    } catch (err) {
+      console.error("Error capturing image:", err);
+      const errorMsg =
+        "Failed to capture image. Please try again or use the upload option.";
+      announceMessage(errorMsg, "assertive");
+      triggerVibration(VIBRATION_PATTERNS.ERROR);
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [
+    isStreamReady,
+    isCapturing,
+    isLoading,
+    announceMessage,
+    addFlashEffect,
+    captureImage,
+    onCapture,
+  ]);
+
+  const handleUploadClick = useCallback(() => {
+    if (isLoading) {
+      announceMessage("Please wait, processing current image.", "polite");
+      return;
+    }
+
+    announceMessage("Opening file picker to select image...", "polite");
+    triggerVibration(VIBRATION_PATTERNS.GENERAL);
+    fileInputRef.current?.click();
+  }, [isLoading, announceMessage]);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      const file = files[0];
+      const validationError = validateFile(file);
+
+      if (validationError) {
+        announceMessage(validationError, "assertive");
         return;
       }
 
-      switch (event.key) {
-        case " ":
-        case "Enter":
-          if (
-            event.target === captureButtonRef.current ||
-            !document.activeElement ||
-            document.activeElement === document.body
-          ) {
-            event.preventDefault();
-            handleCapture();
-          }
-          break;
-        case "u":
-        case "U":
-          event.preventDefault();
-          handleUploadClick();
-          break;
-        case "f":
-        case "F":
-          event.preventDefault();
-          handleFlashToggle();
-          break;
-        case "s":
-        case "S":
-          if (!event.ctrlKey && !event.metaKey) {
-            event.preventDefault();
-            handleSwitchCamera();
-          }
-          break;
-        case "c":
-        case "C":
-          event.preventDefault();
-          handleCapture();
-          break;
-        case "?":
-          event.preventDefault();
-          announceHelpInstructions();
-          break;
-      }
-    };
+      announceMessage(
+        `Selected ${file.name}. Processing for naira note detection...`,
+        "assertive"
+      );
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isStreamReady, isCapturing]);
+      onFileSelect(file);
+      triggerVibration(VIBRATION_PATTERNS.GENERAL);
 
-  const announceHelpInstructions = () => {
+      // Reset input value for reselection
+      e.target.value = "";
+    },
+    [validateFile, announceMessage, onFileSelect]
+  );
+
+  const handleFlashToggle = useCallback(() => {
+    if (!isStreamReady) {
+      announceMessage("Flash not available - camera not ready.", "polite");
+      return;
+    }
+
+    const newFlashState = !flashEnabled;
+    setFlashEnabled(newFlashState);
+    const message = `Flash ${newFlashState ? "enabled" : "disabled"}.`;
+    announceAndSpeak(message, "polite");
+    triggerVibration(VIBRATION_PATTERNS.FLASH);
+  }, [isStreamReady, flashEnabled, announceAndSpeak]);
+
+  const handleSwitchCamera = useCallback(() => {
+    if (!isStreamReady) {
+      announceMessage("Cannot switch camera - camera not ready.", "polite");
+      return;
+    }
+
+    try {
+      switchCamera();
+      const message = "Switching camera...";
+      announceAndSpeak(message, "polite");
+      triggerVibration(VIBRATION_PATTERNS.GENERAL);
+    } catch (err) {
+      announceMessage("Failed to switch camera", "assertive");
+    }
+  }, [isStreamReady, switchCamera, announceAndSpeak, announceMessage]);
+
+  const handleRetry = useCallback(() => {
+    announceMessage("Reloading page to retry camera access...", "assertive");
+    triggerVibration(VIBRATION_PATTERNS.CAPTURE);
+    window.location.reload();
+  }, [announceMessage]);
+
+  const announceHelpInstructions = useCallback(() => {
     const instructions = `
       Camera controls: 
       Press C or Spacebar to capture photo.
@@ -168,247 +233,189 @@ const Camera: React.FC<CameraProps> = ({
       Press question mark for help.
       Position naira note within the center guide for best results.
     `;
-    announceToScreenReader(liveRegionRef, instructions.trim(), "assertive");
+    announceMessage(instructions.trim(), "assertive");
+  }, [announceMessage]);
+
+  const handleVideoLoadedMetadata = useCallback(() => {
+    announceMessage("Camera feed loaded successfully", "polite");
+  }, [announceMessage]);
+
+  const handleVideoError = useCallback(() => {
+    const errorMsg =
+      "Video feed error occurred. Please check camera permissions or try reloading the page.";
+    toastHandler.error(errorMsg);
+    announceMessage("Video feed error occurred", "assertive");
+  }, [announceMessage]);
+
+  // Keyboard handlers
+  const keyboardHandlers: KeyboardHandler = {
+    " ": handleCapture,
+    Enter: handleCapture,
+    c: handleCapture,
+    C: handleCapture,
+    u: handleUploadClick,
+    U: handleUploadClick,
+    f: handleFlashToggle,
+    F: handleFlashToggle,
+    s: handleSwitchCamera,
+    S: handleSwitchCamera,
+    "?": announceHelpInstructions,
   };
 
-  const handleCapture = async () => {
-    if (!isStreamReady || isCapturing || isLoading) {
-      if (!isStreamReady) {
-        announceToScreenReader(
-          liveRegionRef,
-          "Camera not ready. Please wait for camera to initialize or use upload option.",
-          "assertive"
-        );
-      }
-      return;
-    }
-
-    setIsCapturing(true);
-    announceToScreenReader(liveRegionRef, "Capturing image...", "assertive");
-    triggerVibration(100); // Capture feedback
-
-    try {
-      // Flash effect for visual feedback
-      if (overlayRef.current) {
-        overlayRef.current.classList.add(styles.flashEffect);
-        setTimeout(() => {
-          overlayRef.current?.classList.remove(styles.flashEffect);
-        }, 200);
-      }
-
-      const imageBlob = await captureImage();
-      if (imageBlob) {
-        announceToScreenReader(
-          liveRegionRef,
-          "Image captured successfully. Processing for detection...",
-          "assertive"
-        );
-        onCapture(imageBlob);
-        triggerVibration([50, 50, 50]); // Success pattern
-      } else {
-        throw new Error("Failed to capture image");
-      }
-    } catch (err) {
-      console.error("Error capturing image:", err);
-      const errorMsg =
-        "Failed to capture image. Please try again or use the upload option.";
-      announceToScreenReader(liveRegionRef, errorMsg, "assertive");
-      triggerVibration(200); // Error vibration
-    } finally {
-      setIsCapturing(false);
-    }
-  };
-
-  const handleUploadClick = () => {
-    if (isLoading) {
-      announceToScreenReader(
-        liveRegionRef,
-        "Please wait, processing current image.",
-        "polite"
-      );
-      return;
-    }
-
-    announceToScreenReader(
-      liveRegionRef,
-      "Opening file picker to select image...",
-      "polite"
-    );
-    triggerVibration(50);
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-
-      // File validation
-      if (!file.type.startsWith("image/")) {
-        const errorMsg =
-          "Invalid file type. Please select an image file (JPG, PNG, etc.).";
-        announceToScreenReader(liveRegionRef, errorMsg, "assertive");
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      // Skip if user is typing in an input
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        // 10MB limit
-        const errorMsg =
-          "File too large. Please select an image smaller than 10MB.";
-        announceToScreenReader(liveRegionRef, errorMsg, "assertive");
+      // Handle spacebar and enter with special conditions
+      if (event.key === " " || event.key === "Enter") {
+        if (
+          event.target === captureButtonRef.current ||
+          !document.activeElement ||
+          document.activeElement === document.body
+        ) {
+          event.preventDefault();
+          handleCapture();
+        }
         return;
       }
 
-      announceToScreenReader(
-        liveRegionRef,
-        `Selected ${file.name}. Processing for naira note detection...`,
-        "assertive"
-      );
+      // Handle S key with ctrl/cmd check
+      if (
+        (event.key === "s" || event.key === "S") &&
+        (event.ctrlKey || event.metaKey)
+      ) {
+        return; // Allow browser save
+      }
 
-      onFileSelect(file);
-      triggerVibration(50);
+      const handler = keyboardHandlers[event.key];
+      if (handler) {
+        event.preventDefault();
+        handler();
+      }
+    },
+    [keyboardHandlers, handleCapture]
+  );
 
-      // Reset input value so the same file can be selected again
-      e.target.value = "";
-    }
-  };
-
-  const handleFlashToggle = () => {
-    if (!isStreamReady) {
-      announceToScreenReader(
-        liveRegionRef,
-        "Flash not available - camera not ready.",
-        "polite"
-      );
-      return;
-    }
-
-    setFlashEnabled(!flashEnabled);
-    const flashStatus = flashEnabled ? "disabled" : "enabled";
-    const message = `Flash ${flashStatus}.`;
-    announceToScreenReader(liveRegionRef, message, "polite");
-    speakChange(message);
-    triggerVibration(30);
-  };
-
-  const handleSwitchCamera = () => {
-    if (!isStreamReady) {
-      announceToScreenReader(
-        liveRegionRef,
-        "Cannot switch camera - camera not ready.",
-        "polite"
-      );
-      return;
-    }
-
-    try {
-      switchCamera();
-      const message = "Switching camera...";
-      announceToScreenReader(liveRegionRef, message, "polite");
-      speakChange(message);
-      triggerVibration(50);
-    } catch (err) {
-      announceToScreenReader(
-        liveRegionRef,
-        "Failed to switch camera",
-        "assertive"
-      );
-    }
-  };
-
-  const handleRetry = () => {
-    announceToScreenReader(
-      liveRegionRef,
-      "Reloading page to retry camera access...",
-      "assertive"
-    );
-    triggerVibration(100);
-    window.location.reload();
-  };
-
-  const getVideoAriaLabel = () => {
+  const getVideoAriaLabel = useCallback(() => {
     if (!isStreamReady) return "Camera initializing...";
     if (error) return "Camera unavailable";
     return "Live camera feed showing naira note detection area. Position note within center guide.";
-  };
+  }, [isStreamReady, error]);
 
-  return (
+  // Effects
+  useEffect(() => {
+    if (cameraVideoRef.current && videoRef.current) {
+      videoRef.current = cameraVideoRef.current;
+    }
+  }, [cameraVideoRef]);
+
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (!hasUserInteracted) {
+        setHasUserInteracted(true);
+        announceMessage(
+          "Camera interface ready. Position naira note within the frame guide and press capture button or spacebar to take photo.",
+          "polite"
+        );
+      }
+    };
+
+    const events = ["click", "keydown", "touchstart"];
+    events.forEach((event) => {
+      document.addEventListener(event, handleFirstInteraction, { once: true });
+    });
+
+    return () => {
+      events.forEach((event) => {
+        document.removeEventListener(event, handleFirstInteraction);
+      });
+    };
+  }, [hasUserInteracted, announceMessage]);
+
+  useEffect(() => {
+    if (error) {
+      const errorMessage = error.includes("permission")
+        ? "Camera permission denied. Please allow camera access or use the upload option to select an image file."
+        : `Camera error: ${error}. Please try refreshing the page or use the upload option.`;
+
+      setPermissionDenied(error.includes("permission"));
+      announceAndSpeak(errorMessage, "assertive");
+    } else if (isStreamReady) {
+      console.log({ message: "Camera stream is ready." });
+      // const message =
+      //   "Camera is ready. You can now capture images of naira notes.";
+      // announceAndSpeak(message, "polite");
+    }
+  }, [error, isStreamReady, announceAndSpeak]);
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Render helpers
+  const renderErrorState = () => (
     <div
-      className={styles.cameraContainer}
-      role="region"
-      aria-labelledby="camera-title"
+      className={styles.errorContainer}
+      role="alert"
+      aria-labelledby="error-title"
     >
-      {/* Screen reader instructions */}
-      <div className={styles.srOnly}>
-        <h2 id="camera-title">Camera Interface</h2>
-        <p>
-          Use this interface to capture or upload images of Nigerian naira
-          banknotes for detection.
-        </p>
-        <h3>Instructions</h3>
-        <ul>
-          <li>Position the naira note within the center guide frame</li>
-          <li>Ensure good lighting and the entire note is visible</li>
-          <li>Press capture button or spacebar to take photo</li>
-          <li>
-            Alternatively, press U or use upload button to select existing image
-          </li>
-          <li>Press ? for keyboard shortcuts help</li>
-        </ul>
+      <h3 id="error-title" className={styles.srOnly}>
+        Camera Error
+      </h3>
+
+      <div className={styles.errorIcon} aria-hidden="true">
+        <CameraIcon size={48} />
       </div>
 
-      {error ? (
-        <div
-          className={styles.errorContainer}
-          role="alert"
-          aria-labelledby="error-title"
-        >
-          <h3 id="error-title" className={styles.srOnly}>
-            Camera Error
-          </h3>
+      <p className={styles.errorMessage}>
+        {permissionDenied
+          ? "Camera access was denied. Please allow camera permissions in your browser settings, or use the upload option below to select an image file."
+          : error}
+      </p>
 
-          <div className={styles.errorIcon} aria-hidden="true">
-            <CameraIcon size={48} />
-          </div>
-
-          <p className={styles.errorMessage}>
-            {permissionDenied
-              ? "Camera access was denied. Please allow camera permissions in your browser settings, or use the upload option below to select an image file."
-              : error}
-          </p>
-
-          <div className={styles.errorActions}>
-            {!permissionDenied && (
-              <button
-                className={styles.retryButton}
-                onClick={handleRetry}
-                aria-label="Retry camera access by reloading page"
-                type="button"
-              >
-                <RefreshCw size={20} aria-hidden="true" />
-                <span>Retry Camera</span>
-              </button>
-            )}
-
-            <button
-              className={styles.uploadButton}
-              onClick={handleUploadClick}
-              aria-label="Upload image file instead of using camera"
-              type="button"
-            >
-              <Upload size={20} aria-hidden="true" />
-              <span>Upload Image</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Camera feed section */}
-          <div
-            className={styles.videoContainer}
-            role="img"
-            aria-labelledby="video-description"
+      <div className={styles.errorActions}>
+        {!permissionDenied && (
+          <button
+            className={styles.retryButton}
+            onClick={handleRetry}
+            aria-label="Retry camera access by reloading page"
+            type="button"
           >
+            <RefreshCw size={20} aria-hidden="true" />
+            <span>Retry Camera</span>
+          </button>
+        )}
+
+        <button
+          className={styles.uploadButton}
+          onClick={handleUploadClick}
+          aria-label="Upload image file instead of using camera"
+          type="button"
+        >
+          <Upload size={20} aria-hidden="true" />
+          <span>Upload Image</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderVideoContainer = useCallback(() => {
+    const loading = isLoading || isCapturing;
+    return (
+      <div
+        className={styles.videoContainer}
+        role="img"
+        aria-labelledby="video-description"
+      >
+        {!loading && (
+          <>
             <div id="video-description" className={styles.srOnly}>
               {getVideoAriaLabel()}
             </div>
@@ -420,211 +427,225 @@ const Camera: React.FC<CameraProps> = ({
               playsInline
               muted
               aria-hidden="true"
-              onLoadedMetadata={() => {
-                announceToScreenReader(
-                  liveRegionRef,
-                  "Camera feed loaded successfully",
-                  "polite"
-                );
-              }}
-              onError={() => {
-                toastHandler.error(
-                  "Video feed error occurred. Please check camera permissions or try reloading the page."
-                );
-                announceToScreenReader(
-                  liveRegionRef,
-                  "Video feed error occurred",
-                  "assertive"
-                );
-              }}
+              onLoadedMetadata={handleVideoLoadedMetadata}
+              onError={handleVideoError}
             />
 
-            {/* Overlay guides and effects */}
-            <div
-              ref={overlayRef}
-              className={styles.overlayGuides}
-              aria-hidden="true"
-            >
-              <div className={styles.centerGuide}>
-                <div className={styles.guideCorners}>
-                  <span
-                    className={styles.corner}
-                    data-position="top-left"
-                  ></span>
-                  <span
-                    className={styles.corner}
-                    data-position="top-right"
-                  ></span>
-                  <span
-                    className={styles.corner}
-                    data-position="bottom-left"
-                  ></span>
-                  <span
-                    className={styles.corner}
-                    data-position="bottom-right"
-                  ></span>
-                </div>
-                <div className={styles.guideText}>Position naira note here</div>
-              </div>
-            </div>
+            {renderOverlayGuides()}
+            {renderStatusIndicator()}
+          </>
+        )}
+        {loading && renderLoadingOverlay()}
+      </div>
+    );
+  }, [
+    isLoading,
+    isCapturing,
+    getVideoAriaLabel,
+    handleVideoLoadedMetadata,
+    handleVideoError,
+  ]);
 
-            {/* Camera status indicator */}
-            <div className={styles.statusIndicator} aria-hidden="true">
-              {isStreamReady ? (
-                <div
-                  className={`${styles.statusDot} ${styles.ready}`}
-                  title="Camera ready"
-                ></div>
-              ) : (
-                <div
-                  className={`${styles.statusDot} ${styles.loading}`}
-                  title="Camera loading"
-                ></div>
-              )}
-            </div>
+  const renderOverlayGuides = () => (
+    <div ref={overlayRef} className={styles.overlayGuides} aria-hidden="true">
+      <div className={styles.centerGuide}>
+        <div className={styles.guideCorners}>
+          {["top-left", "top-right", "bottom-left", "bottom-right"].map(
+            (position) => (
+              <span
+                key={position}
+                className={styles.corner}
+                data-position={position}
+              />
+            )
+          )}
+        </div>
+        <div className={styles.guideText}>Position naira note here</div>
+      </div>
+    </div>
+  );
 
-            {/* Loading overlay */}
-            {(isLoading || isCapturing) && (
-              <div
-                className={styles.loadingOverlay}
-                role="status"
-                aria-live="assertive"
-                aria-label={
-                  isCapturing ? "Capturing image..." : "Processing image..."
-                }
-              >
-                <div className={styles.loadingSpinner} aria-hidden="true"></div>
-                <p>{isCapturing ? "Capturing..." : "Processing..."}</p>
-              </div>
-            )}
-          </div>
+  const renderStatusIndicator = () => (
+    <div className={styles.statusIndicator} aria-hidden="true">
+      <div
+        className={`${styles.statusDot} ${
+          isStreamReady ? styles.ready : styles.loading
+        }`}
+        title={isStreamReady ? "Camera ready" : "Camera loading"}
+      />
+    </div>
+  );
 
-          {/* Camera controls */}
-          <div
-            className={styles.cameraControls}
-            role="toolbar"
-            aria-label="Camera controls"
-          >
-            {/* Secondary controls */}
-            <div className={styles.secondaryControls}>
-              <button
-                className={`${styles.controlButton} ${styles.flashButton}`}
-                onClick={handleFlashToggle}
-                aria-label={`${flashEnabled ? "Disable" : "Enable"} flash`}
-                aria-pressed={flashEnabled}
-                disabled={!isStreamReady}
-                type="button"
-              >
-                {flashEnabled ? (
-                  <Zap size={20} aria-hidden="true" />
-                ) : (
-                  <ZapOff size={20} aria-hidden="true" />
-                )}
-                <span className={styles.srOnly}>
-                  Flash {flashEnabled ? "on" : "off"}
-                </span>
-              </button>
+  const renderLoadingOverlay = () => <Loader />;
 
-              <button
-                className={`${styles.controlButton} ${styles.switchButton}`}
-                onClick={handleSwitchCamera}
-                aria-label="Switch between front and back camera"
-                disabled={!isStreamReady}
-                type="button"
-              >
-                <FlipHorizontal size={20} aria-hidden="true" />
-                <span className={styles.buttonLabel}>Switch</span>
-              </button>
-            </div>
+  const renderCameraControls = () => (
+    <div
+      className={styles.cameraControls}
+      role="toolbar"
+      aria-label="Camera controls"
+    >
+      {renderSecondaryControls()}
+      {renderActionButtons()}
+      {renderKeyboardInfo()}
+    </div>
+  );
 
-            {/* Main action buttons */}
-            <div
-              className={styles.actionButtons}
-              role="group"
-              aria-label="Main camera actions"
-            >
-              <button
-                ref={captureButtonRef}
-                className={`${styles.captureButton} ${
-                  isCapturing ? styles.capturing : ""
-                }`}
-                onClick={handleCapture}
-                disabled={!isStreamReady || isCapturing || isLoading}
-                aria-label={
-                  isCapturing
-                    ? "Capturing image..."
-                    : "Capture photo of naira note"
-                }
-                aria-describedby="capture-instructions"
-                type="button"
-              >
-                <CameraIcon size={24} aria-hidden="true" />
-                <span className={styles.buttonText}>
-                  {isCapturing ? "Capturing..." : "Capture"}
-                </span>
-              </button>
+  const renderSecondaryControls = () => (
+    <div className={styles.secondaryControls}>
+      <button
+        className={`${styles.controlButton} ${styles.flashButton}`}
+        onClick={handleFlashToggle}
+        aria-label={`${flashEnabled ? "Disable" : "Enable"} flash`}
+        aria-pressed={flashEnabled}
+        disabled={!isStreamReady}
+        type="button"
+      >
+        {flashEnabled ? (
+          <Zap size={20} aria-hidden="true" />
+        ) : (
+          <ZapOff size={20} aria-hidden="true" />
+        )}
+        <span className={styles.srOnly}>
+          Flash {flashEnabled ? "on" : "off"}
+        </span>
+      </button>
 
-              <div id="capture-instructions" className={styles.srOnly}>
-                Press to capture image of naira note positioned within the guide
-                frame. Also activated by spacebar or C key.
-              </div>
+      <button
+        className={`${styles.controlButton} ${styles.switchButton}`}
+        onClick={handleSwitchCamera}
+        aria-label="Switch between front and back camera"
+        disabled={!isStreamReady}
+        type="button"
+      >
+        <FlipHorizontal size={20} aria-hidden="true" />
+        <span className={styles.buttonLabel}>Switch</span>
+      </button>
+    </div>
+  );
 
-              <button
-                className={styles.uploadButton}
-                onClick={handleUploadClick}
-                disabled={isLoading}
-                aria-label="Upload image file from device"
-                aria-describedby="upload-instructions"
-                type="button"
-              >
-                <Upload size={24} aria-hidden="true" />
-                <span className={styles.buttonText}>Upload</span>
-              </button>
+  const renderActionButtons = () => (
+    <div
+      className={styles.actionButtons}
+      role="group"
+      aria-label="Main camera actions"
+    >
+      <button
+        ref={captureButtonRef}
+        className={`${styles.captureButton} ${
+          isCapturing ? styles.capturing : ""
+        }`}
+        onClick={handleCapture}
+        disabled={!isStreamReady || isCapturing || isLoading}
+        aria-label={
+          isCapturing ? "Capturing image..." : "Capture photo of naira note"
+        }
+        aria-describedby="capture-instructions"
+        type="button"
+      >
+        <CameraIcon size={24} aria-hidden="true" />
+        <span className={styles.buttonText}>
+          {isCapturing ? "Capturing..." : "Capture"}
+        </span>
+      </button>
 
-              <div id="upload-instructions" className={styles.srOnly}>
-                Select an existing image file from your device. Accepts JPG, PNG
-                and other image formats. Also activated by U key.
-              </div>
-            </div>
+      <div id="capture-instructions" className={styles.srOnly}>
+        Press to capture image of naira note positioned within the guide frame.
+        Also activated by spacebar or C key.
+      </div>
 
-            {/* Keyboard shortcuts info */}
-            <div
-              className={styles.keyboardInfo}
-              aria-labelledby="shortcuts-info"
-            >
-              <div id="shortcuts-info" className={styles.srOnly}>
-                <h3>Keyboard Shortcuts</h3>
-                <ul>
-                  <li>C or Spacebar: Capture photo</li>
-                  <li>U: Upload file</li>
-                  <li>F: Toggle flash</li>
-                  <li>S: Switch camera</li>
-                  <li>?: Show help</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+      <button
+        className={styles.uploadButton}
+        onClick={handleUploadClick}
+        disabled={isLoading}
+        aria-label="Upload image file from device"
+        aria-describedby="upload-instructions"
+        type="button"
+      >
+        <Upload size={24} aria-hidden="true" />
+        <span className={styles.buttonText}>Upload</span>
+      </button>
 
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            // capture="environment"
-            onChange={handleFileChange}
-            className={styles.fileInput}
-            aria-label="Select image file for naira note detection"
-          />
+      <div id="upload-instructions" className={styles.srOnly}>
+        Select an existing image file from your device. Accepts JPG, PNG and
+        other image formats. Also activated by U key.
+      </div>
+    </div>
+  );
 
-          {/* Live region for announcements */}
-          <div
-            ref={liveRegionRef}
-            aria-live="polite"
-            aria-atomic="true"
-            className={styles.srOnly}
-          ></div>
+  const renderKeyboardInfo = () => (
+    <div className={styles.keyboardInfo} aria-labelledby="shortcuts-info">
+      <div id="shortcuts-info" className={styles.srOnly}>
+        <h3>Keyboard Shortcuts</h3>
+        <ul>
+          <li>C or Spacebar: Capture photo</li>
+          <li>U: Upload file</li>
+          <li>F: Toggle flash</li>
+          <li>S: Switch camera</li>
+          <li>?: Show help</li>
+        </ul>
+      </div>
+    </div>
+  );
+
+  const renderScreenReaderInstructions = () => (
+    <div className={styles.srOnly}>
+      <h2 id="camera-title">Camera Interface</h2>
+      <p>
+        Use this interface to capture or upload images of Nigerian naira
+        banknotes for detection.
+      </p>
+      <h3>Instructions</h3>
+      <ul>
+        <li>Position the naira note within the center guide frame</li>
+        <li>Ensure good lighting and the entire note is visible</li>
+        <li>Press capture button or spacebar to take photo</li>
+        <li>
+          Alternatively, press U or use upload button to select existing image
+        </li>
+        <li>Press ? for keyboard shortcuts help</li>
+      </ul>
+    </div>
+  );
+
+  const renderHiddenElements = () => (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className={styles.fileInput}
+        aria-label="Select image file for naira note detection"
+      />
+
+      <div
+        ref={liveRegionRef}
+        aria-live="polite"
+        aria-atomic="true"
+        className={styles.srOnly}
+      />
+    </>
+  );
+
+  // Main render
+  return (
+    <div
+      className={styles.cameraContainer}
+      role="region"
+      aria-labelledby="camera-title"
+    >
+      {renderScreenReaderInstructions()}
+
+      {error ? (
+        renderErrorState()
+      ) : (
+        <>
+          {renderVideoContainer()}
+          {renderCameraControls()}
         </>
       )}
+
+      {renderHiddenElements()}
     </div>
   );
 };

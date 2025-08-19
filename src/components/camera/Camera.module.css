@@ -22,7 +22,7 @@
 /* Camera container improvements */
 .cameraContainer {
   max-width: 1200px;
-  height: 90vh;
+  height: 85vh;
   margin: auto;
   display: flex;
   flex-direction: column;
@@ -79,6 +79,7 @@
 
 @media (max-width: 600px) {
   .centerGuide {
+    top: 35%;
     width: 65%;
     height: 35%;
   }
@@ -189,46 +190,12 @@
   animation: pulse 2s infinite;
 }
 
-/* Loading overlay */
-.loadingOverlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  z-index: 10;
-}
-
-.loadingSpinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid #fff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
 /* Camera controls layout */
 .cameraControls {
   width: 100%;
   position: absolute;
   bottom: 0;
+  left: 0;
   padding: 20px;
   background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
   border-top: 1px solid #333;

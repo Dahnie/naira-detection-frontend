@@ -17,7 +17,6 @@ import {
   announceToScreenReader,
   triggerVibration,
 } from "@utils/accessibiltyHelper";
-import Loader from "@components/loader/Loader";
 // import { cropCurrencyFromImage } from "@hooks/useCurrencyCropper";
 
 // App component
@@ -33,7 +32,6 @@ const Home: React.FC = () => {
   // Accessibility refs
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLElement>(null);
-  const skipLinkRef = useRef<HTMLAnchorElement>(null);
 
   // Hooks
   const { speak, isSpeaking } = useSpeech();
@@ -282,10 +280,6 @@ const Home: React.FC = () => {
   //     announceToScreenReader(liveRegionRef, "Skipped to main content");
   //   }
   // };
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   return (
     <div className={styles.app}>
