@@ -149,8 +149,8 @@
   content: "";
   height: 24px; /* Adjusted for new switch size */
   width: 24px;
-  left: 4px;
-  bottom: 4px;
+  left: 1px;
+  bottom: 2px;
   background-color: white;
   transition: 0.4s;
   border-radius: 50%;
@@ -161,7 +161,7 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-  transform: translateX(28px); /* Adjusted for new switch size */
+  transform: translateX(30px); /* Adjusted for new switch size */
 }
 
 .slider.round {
@@ -176,11 +176,12 @@ input:checked + .slider:before {
 
 input[type="range"] {
   width: 100%;
-  height: 32px; /* Increased height for easier interaction */
+  height: 28px; /* Increased height for easier interaction */
   margin: var(--spacing-sm) 0;
   -webkit-appearance: none;
   appearance: none;
-  background: transparent;
+  background: var(--border-color);
+  border-radius: 16px;
   cursor: pointer;
 }
 

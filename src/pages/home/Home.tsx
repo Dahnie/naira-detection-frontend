@@ -17,6 +17,7 @@ import {
   announceToScreenReader,
   triggerVibration,
 } from "@utils/accessibiltyHelper";
+import Loader from "@components/loader/Loader";
 // import { cropCurrencyFromImage } from "@hooks/useCurrencyCropper";
 
 // App component
@@ -219,10 +220,10 @@ const Home: React.FC = () => {
 
       // Add tips based on confidence
       if (topResult.confidence < 0.7) {
-        resultMessage +=
-          " Low confidence detected. Try capturing with better lighting, steadier hands, or ensure the entire note is visible.";
+        resultMessage =
+          "Low confidence detected. Try capturing with better lighting, steadier hands, or ensure the entire note is visible.";
       } else if (topResult.confidence > 0.9) {
-        resultMessage += " High confidence detection.";
+        // resultMessage += " High confidence detection.";
       }
     } else {
       resultMessage =
@@ -274,25 +275,29 @@ const Home: React.FC = () => {
   };
 
   // Handle skip link
-  const handleSkipToContent = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    if (mainContentRef.current) {
-      mainContentRef.current.focus();
-      announceToScreenReader(liveRegionRef, "Skipped to main content");
-    }
-  };
+  // const handleSkipToContent = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  //   event.preventDefault();
+  //   if (mainContentRef.current) {
+  //     mainContentRef.current.focus();
+  //     announceToScreenReader(liveRegionRef, "Skipped to main content");
+  //   }
+  // };
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div className={styles.app}>
       {/* Skip to content link for keyboard users */}
-      <a
+      {/* <a
         href="#main-content"
         ref={skipLinkRef}
         className={styles.skipLink}
         onClick={handleSkipToContent}
       >
         Skip to main content
-      </a>
+      </a> */}
 
       {/* Live region for screen reader announcements */}
       <div
