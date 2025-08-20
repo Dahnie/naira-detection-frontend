@@ -6,8 +6,6 @@ import {
   Upload,
   RefreshCw,
   FlipHorizontal,
-  Zap,
-  ZapOff,
 } from "lucide-react";
 import {
   announceToScreenReader,
@@ -144,7 +142,6 @@ const Camera: React.FC<CameraProps> = ({
     isStreamReady,
     isCapturing,
     isLoading,
-    announceMessage,
     addFlashEffect,
     captureImage,
     onCapture,
@@ -159,7 +156,7 @@ const Camera: React.FC<CameraProps> = ({
     announceMessage("Opening file picker to select image...", "polite");
     triggerVibration(VIBRATION_PATTERNS.GENERAL);
     fileInputRef.current?.click();
-  }, [isLoading, announceMessage]);
+  }, [isLoading]);
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,7 +218,7 @@ const Camera: React.FC<CameraProps> = ({
     announceMessage("Reloading page to retry camera access...", "assertive");
     triggerVibration(VIBRATION_PATTERNS.CAPTURE);
     window.location.reload();
-  }, [announceMessage]);
+  }, []);
 
   const announceHelpInstructions = useCallback(() => {
     const instructions = `
@@ -336,7 +333,7 @@ const Camera: React.FC<CameraProps> = ({
         document.removeEventListener(event, handleFirstInteraction);
       });
     };
-  }, [hasUserInteracted, announceMessage]);
+  }, [hasUserInteracted]);
 
   useEffect(() => {
     if (error) {
@@ -352,7 +349,7 @@ const Camera: React.FC<CameraProps> = ({
       //   "Camera is ready. You can now capture images of naira notes.";
       // announceAndSpeak(message, "polite");
     }
-  }, [error, isStreamReady, announceAndSpeak]);
+  }, [error, isStreamReady]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -492,7 +489,7 @@ const Camera: React.FC<CameraProps> = ({
 
   const renderSecondaryControls = () => (
     <div className={styles.secondaryControls}>
-      <button
+      {/* <button
         className={`${styles.controlButton} ${styles.flashButton}`}
         onClick={handleFlashToggle}
         aria-label={`${flashEnabled ? "Disable" : "Enable"} flash`}
@@ -508,7 +505,7 @@ const Camera: React.FC<CameraProps> = ({
         <span className={styles.srOnly}>
           Flash {flashEnabled ? "on" : "off"}
         </span>
-      </button>
+      </button> */}
 
       <button
         className={`${styles.controlButton} ${styles.switchButton}`}

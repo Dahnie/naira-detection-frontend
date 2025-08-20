@@ -32,7 +32,7 @@ const ERROR_VIBRATION_DURATION = 200;
 
 const MESSAGES = {
   WELCOME_CAMERA:
-    "Naira Note Detector loaded. Use camera to capture or upload an image of a naira note for detection. Settings button available in top right corner.",
+    "Naira Note Detector loaded. Use camera to capture or upload an image of a naira note for detection.",
   WELCOME_RESULT:
     "Detection results displayed. Use back button to return to camera.",
   CAPTURE_PROCESSING: "Image captured, processing for naira note detection...",
@@ -73,24 +73,17 @@ const Home: React.FC = () => {
   // Refs
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLElement>(null);
+  const hasAnnouncedWelcome = useRef(false); // Add this ref to track welcome message
 
   // Hooks
   const { speak, isSpeaking } = useSpeech();
 
-  // Utility functions
+  // Stable utility functions with minimal dependencies
   const announceMessage = useCallback(
     (message: string, priority: "polite" | "assertive" = "polite") => {
       announceToScreenReader(liveRegionRef, message, priority);
     },
-    []
-  );
-
-  const announceAndSpeak = useCallback(
-    (message: string, priority: "polite" | "assertive" = "polite") => {
-      announceMessage(message, priority);
-      speak(message);
-    },
-    [announceMessage, speak]
+    [] // No dependencies - liveRegionRef is stable
   );
 
   const cleanupResources = useCallback(() => {
@@ -126,12 +119,14 @@ const Home: React.FC = () => {
       if (!file.type.startsWith("image/")) {
         const errorMsg = MESSAGES.INVALID_FILE;
         toastHandler.error(errorMsg);
-        announceAndSpeak(errorMsg, "assertive");
+        announceMessage(errorMsg, "assertive");
+        speak(errorMsg);
+        triggerVibration(ERROR_VIBRATION_DURATION);
         return false;
       }
       return true;
     },
-    [announceAndSpeak]
+    [speak]
   );
 
   const focusMainContent = useCallback(() => {
@@ -147,7 +142,7 @@ const Home: React.FC = () => {
       announceMessage(MESSAGES.CAPTURE_PROCESSING, "assertive");
       processImage(imageBlob);
     },
-    [announceMessage]
+    [announceMessage] // Keep minimal dependencies
   );
 
   const handleFileSelect = useCallback(
@@ -164,7 +159,8 @@ const Home: React.FC = () => {
   const processImage = useCallback(
     async (imageBlob: Blob) => {
       setIsLoading(true);
-      announceAndSpeak(MESSAGES.PROCESSING_WAIT, "assertive");
+      speak(MESSAGES.PROCESSING_WAIT);
+      announceMessage(MESSAGES.PROCESSING_WAIT, "assertive");
 
       try {
         const url = createImageUrl(imageBlob);
@@ -172,28 +168,33 @@ const Home: React.FC = () => {
 
         const result = await detectNairaNote(imageBlob);
         if (!result) {
-          announceAndSpeak(MESSAGES.DETECTION_FAILED, "assertive");
+          speak(MESSAGES.DETECTION_FAILED);
+          announceMessage(MESSAGES.DETECTION_FAILED, "assertive");
           triggerVibration(ERROR_VIBRATION_DURATION);
           return;
         }
 
         setDetectionResult(result);
         setCurrentView("result");
+        hasAnnouncedWelcome.current = false; // Reset for new view
       } catch (error) {
         console.error("Error processing image:", error);
         const errorMsg = MESSAGES.PROCESSING_ERROR;
+        speak(errorMsg);
+        announceMessage(MESSAGES.DETECTION_FAILED, "assertive");
+        triggerVibration(ERROR_VIBRATION_DURATION);
         toastHandler.error(errorMsg);
-        announceAndSpeak(errorMsg, "assertive");
       } finally {
         setIsLoading(false);
       }
     },
-    [announceAndSpeak]
+    [speak]
   );
 
   const handleSpeakResult = useCallback(() => {
     if (!detectionResult) {
-      announceAndSpeak(MESSAGES.NO_RESULT);
+      speak(MESSAGES.NO_RESULT);
+      announceMessage(MESSAGES.NO_RESULT);
       return;
     }
 
@@ -204,13 +205,7 @@ const Home: React.FC = () => {
       speak(resultMessage);
     }
     announceMessage(resultMessage, "polite");
-  }, [
-    detectionResult,
-    formatDetectionMessage,
-    announceAndSpeak,
-    announceMessage,
-    speak,
-  ]);
+  }, [detectionResult, formatDetectionMessage]);
 
   const resetToCamera = useCallback(() => {
     setCurrentView("camera");
@@ -218,6 +213,7 @@ const Home: React.FC = () => {
     cleanupResources();
     setDetectionResult(null);
     focusMainContent();
+    hasAnnouncedWelcome.current = false; // Reset for new view
   }, [announceMessage, cleanupResources, focusMainContent]);
 
   const toggleSettings = useCallback(() => {
@@ -239,8 +235,8 @@ const Home: React.FC = () => {
         ? KEYBOARD_INSTRUCTIONS.CAMERA
         : KEYBOARD_INSTRUCTIONS.RESULT;
 
-    announceAndSpeak(instructions, "assertive");
-  }, [currentView, announceAndSpeak]);
+    announceToScreenReader(liveRegionRef, instructions, "assertive");
+  }, [currentView]);
 
   // Keyboard handlers
   const createKeyboardHandlers = useCallback((): KeyboardHandler => {
@@ -310,14 +306,18 @@ const Home: React.FC = () => {
     return cleanupResources;
   }, [cleanupResources]);
 
+  // Fixed welcome message effect - only runs once per view change
   useEffect(() => {
+    if (currentView !== "camera") return;
+    // Skip if we've already announced for this view
+    if (hasAnnouncedWelcome.current) return;
+
     const welcomeMessage =
-      currentView === "camera"
-        ? MESSAGES.WELCOME_CAMERA
-        : MESSAGES.WELCOME_RESULT;
+      currentView === "camera" ? MESSAGES.WELCOME_CAMERA : "";
 
     const announceWelcome = () => {
-      announceMessage(welcomeMessage, "polite");
+      hasAnnouncedWelcome.current = true;
+      announceToScreenReader(liveRegionRef, welcomeMessage, "polite");
       if (getPreference("autoSpeak")) {
         speak(welcomeMessage);
       }
@@ -325,20 +325,24 @@ const Home: React.FC = () => {
 
     const timeoutId = setTimeout(announceWelcome, ANNOUNCEMENT_DELAY);
     return () => clearTimeout(timeoutId);
-  }, [currentView, announceMessage, speak]);
+  }, [currentView, speak]); // Minimal dependencies
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  // Auto-speak result when switching to result view (only once per result)
   useEffect(() => {
     if (
       currentView === "result" &&
       detectionResult &&
-      getPreference("autoSpeak")
+      getPreference("autoSpeak") &&
+      !hasAnnouncedWelcome.current // Only if we haven't processed this result yet
     ) {
-      const timeoutId = setTimeout(handleSpeakResult, AUTO_SPEAK_DELAY);
+      const timeoutId = setTimeout(() => {
+        handleSpeakResult();
+      }, AUTO_SPEAK_DELAY);
       return () => clearTimeout(timeoutId);
     }
   }, [detectionResult, currentView, handleSpeakResult]);

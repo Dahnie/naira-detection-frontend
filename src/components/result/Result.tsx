@@ -43,6 +43,7 @@ const Result: React.FC<ResultProps> = ({
   const resultHeaderRef = useRef<HTMLElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const confidenceBarRef = useRef<HTMLDivElement>(null);
+  const hasAnnouncedResult = useRef(false); // Add this to track if we've announced
 
   // Determine confidence level and associated messaging
   useEffect(() => {
@@ -55,14 +56,18 @@ const Result: React.FC<ResultProps> = ({
     }
   }, [confidence]);
 
-  // Focus management when component mounts
+  // Focus management and result announcement when component mounts - ONLY ONCE
   useEffect(() => {
+    // Skip if already announced
+    if (hasAnnouncedResult.current) return;
+
     if (resultHeaderRef.current) {
       resultHeaderRef.current.focus();
     }
 
-    // Announce result summary to screen readers
-    setTimeout(() => {
+    // Announce result summary to screen readers - only once
+    const timeoutId = setTimeout(() => {
+      hasAnnouncedResult.current = true;
       const resultSummary = denomination
         ? `Detection results loaded. ${denomination} detected with ${Math.round(
             confidence * 100
@@ -71,7 +76,9 @@ const Result: React.FC<ResultProps> = ({
 
       announceToScreenReader(liveRegionRef, resultSummary, "polite");
     }, 500);
-  }, [denomination, confidence]);
+
+    return () => clearTimeout(timeoutId);
+  }, []); // Empty dependency array - only run once on mount
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -120,7 +127,7 @@ const Result: React.FC<ResultProps> = ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [onBack, onNewScan, onSpeak]); // Add dependencies to prevent stale closures
 
   // Enhanced back handler with accessibility
   const handleBack = () => {
