@@ -56,9 +56,9 @@ const MESSAGES = {
 
 const KEYBOARD_INSTRUCTIONS = {
   CAMERA:
-    "Camera view: Press spacebar to capture photo, or press F to select file. Press Ctrl+S for settings, or press question mark for help.",
+    "Camera view: Press spacebar or the capture button to capture photo, or press F or the upload button to select file. Press Ctrl+S or the settings button for settings, or press question mark for help.",
   RESULT:
-    "Results view: Press R to repeat result, press B to go back to camera, press Ctrl+S for settings.",
+    "Results view: Press R or the repeat button to repeat result, press B or the back button to go back to camera, press Ctrl+S or the settings button for settings.",
 } as const;
 
 const Home: React.FC = () => {
@@ -74,16 +74,16 @@ const Home: React.FC = () => {
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLElement>(null);
   const hasAnnouncedWelcome = useRef(false); // Add this ref to track welcome message
-
   // Hooks
   const { speak, isSpeaking } = useSpeech();
+  const canSpeak = getPreference("autoSpeak");
 
-  // Stable utility functions with minimal dependencies
   const announceMessage = useCallback(
     (message: string, priority: "polite" | "assertive" = "polite") => {
-      announceToScreenReader(liveRegionRef, message, priority);
+      // So same message isn't announced multiple times
+      if (!canSpeak) announceToScreenReader(liveRegionRef, message, priority);
     },
-    [] // No dependencies - liveRegionRef is stable
+    []
   );
 
   const cleanupResources = useCallback(() => {
@@ -142,7 +142,7 @@ const Home: React.FC = () => {
       announceMessage(MESSAGES.CAPTURE_PROCESSING, "assertive");
       processImage(imageBlob);
     },
-    [announceMessage] // Keep minimal dependencies
+    [announceMessage]
   );
 
   const handleFileSelect = useCallback(
@@ -156,40 +156,37 @@ const Home: React.FC = () => {
     [validateImageFile, announceMessage]
   );
 
-  const processImage = useCallback(
-    async (imageBlob: Blob) => {
-      setIsLoading(true);
-      speak(MESSAGES.PROCESSING_WAIT);
-      announceMessage(MESSAGES.PROCESSING_WAIT, "assertive");
+  const processImage = useCallback(async (imageBlob: Blob) => {
+    setIsLoading(true);
+    speak(MESSAGES.PROCESSING_WAIT);
+    announceMessage(MESSAGES.PROCESSING_WAIT, "assertive");
 
-      try {
-        const url = createImageUrl(imageBlob);
-        setResultImageUrl(url);
+    try {
+      const url = createImageUrl(imageBlob);
+      setResultImageUrl(url);
 
-        const result = await detectNairaNote(imageBlob);
-        if (!result) {
-          speak(MESSAGES.DETECTION_FAILED);
-          announceMessage(MESSAGES.DETECTION_FAILED, "assertive");
-          triggerVibration(ERROR_VIBRATION_DURATION);
-          return;
-        }
-
-        setDetectionResult(result);
-        setCurrentView("result");
-        hasAnnouncedWelcome.current = false; // Reset for new view
-      } catch (error) {
-        console.error("Error processing image:", error);
-        const errorMsg = MESSAGES.PROCESSING_ERROR;
-        speak(errorMsg);
+      const result = await detectNairaNote(imageBlob);
+      if (!result) {
+        speak(MESSAGES.DETECTION_FAILED);
         announceMessage(MESSAGES.DETECTION_FAILED, "assertive");
         triggerVibration(ERROR_VIBRATION_DURATION);
-        toastHandler.error(errorMsg);
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    },
-    [speak]
-  );
+
+      setDetectionResult(result);
+      setCurrentView("result");
+      hasAnnouncedWelcome.current = false; // Reset for new view
+    } catch (error) {
+      console.error("Error processing image:", error);
+      const errorMsg = MESSAGES.PROCESSING_ERROR;
+      speak(errorMsg);
+      announceMessage(MESSAGES.DETECTION_FAILED, "assertive");
+      triggerVibration(ERROR_VIBRATION_DURATION);
+      toastHandler.error(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleSpeakResult = useCallback(() => {
     if (!detectionResult) {
@@ -235,8 +232,8 @@ const Home: React.FC = () => {
         ? KEYBOARD_INSTRUCTIONS.CAMERA
         : KEYBOARD_INSTRUCTIONS.RESULT;
 
-    announceToScreenReader(liveRegionRef, instructions, "assertive");
-  }, [currentView]);
+    announceMessage(instructions, "assertive");
+  }, [currentView, announceMessage]);
 
   // Keyboard handlers
   const createKeyboardHandlers = useCallback((): KeyboardHandler => {
@@ -317,15 +314,13 @@ const Home: React.FC = () => {
 
     const announceWelcome = () => {
       hasAnnouncedWelcome.current = true;
-      announceToScreenReader(liveRegionRef, welcomeMessage, "polite");
-      if (getPreference("autoSpeak")) {
-        speak(welcomeMessage);
-      }
+      announceMessage(welcomeMessage, "polite");
+      speak(welcomeMessage);
     };
 
     const timeoutId = setTimeout(announceWelcome, ANNOUNCEMENT_DELAY);
     return () => clearTimeout(timeoutId);
-  }, [currentView, speak]); // Minimal dependencies
+  }, [currentView, speak]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -425,6 +420,7 @@ const Home: React.FC = () => {
         onNewScan={resetToCamera}
         onSpeak={handleSpeakResult}
         isSpeaking={isSpeaking}
+        announceMessage={announceMessage}
       />
     );
   };

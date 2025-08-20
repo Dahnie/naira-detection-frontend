@@ -8,10 +8,7 @@ import {
   XCircle,
 } from "lucide-react";
 import styles from "./Result.module.css";
-import {
-  announceToScreenReader,
-  triggerVibration,
-} from "@utils/accessibiltyHelper";
+import { triggerVibration } from "@utils/accessibiltyHelper";
 import { classNames } from "@utils/classNames";
 
 interface ResultProps {
@@ -22,6 +19,7 @@ interface ResultProps {
   onNewScan: () => void;
   onSpeak: () => void;
   isSpeaking?: boolean;
+  announceMessage: (message: string, priority?: "polite" | "assertive") => void;
 }
 
 const Result: React.FC<ResultProps> = ({
@@ -32,6 +30,7 @@ const Result: React.FC<ResultProps> = ({
   onNewScan,
   onSpeak,
   isSpeaking = false,
+  announceMessage,
 }) => {
   const [confidenceLevel, setConfidenceLevel] = useState<
     "high" | "medium" | "low"
@@ -74,11 +73,11 @@ const Result: React.FC<ResultProps> = ({
           )} percent confidence.`
         : "Detection results loaded. No naira note was detected in the image.";
 
-      announceToScreenReader(liveRegionRef, resultSummary, "polite");
+      announceMessage(resultSummary, "polite");
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -131,14 +130,14 @@ const Result: React.FC<ResultProps> = ({
 
   // Enhanced back handler with accessibility
   const handleBack = () => {
-    announceToScreenReader(liveRegionRef, "Returning to camera view", "polite");
+    announceMessage("Returning to camera view", "polite");
     triggerVibration(50); // Short vibration feedback
     onBack();
   };
 
   // Enhanced new scan handler with accessibility
   const handleNewScan = () => {
-    announceToScreenReader(liveRegionRef, "Starting new scan", "polite");
+    announceMessage("Starting new scan", "polite");
     triggerVibration(50); // Short vibration feedback
     onNewScan();
   };
@@ -146,11 +145,11 @@ const Result: React.FC<ResultProps> = ({
   // Enhanced speak handler with accessibility
   const handleSpeak = () => {
     if (isSpeaking) {
-      announceToScreenReader(liveRegionRef, "Speech in progress", "polite");
+      announceMessage("Speech in progress", "polite");
       return;
     }
 
-    announceToScreenReader(liveRegionRef, "Reading detection result", "polite");
+    announceMessage("Reading detection result", "polite");
     triggerVibration(30); // Light vibration feedback
     onSpeak();
   };
@@ -158,20 +157,12 @@ const Result: React.FC<ResultProps> = ({
   // Image load handlers
   const handleImageLoad = () => {
     setImageLoaded(true);
-    announceToScreenReader(
-      liveRegionRef,
-      "Result image loaded successfully",
-      "polite"
-    );
+    announceMessage("Result image loaded successfully", "polite");
   };
 
   const handleImageError = () => {
     setImageError(true);
-    announceToScreenReader(
-      liveRegionRef,
-      "Failed to load result image",
-      "assertive"
-    );
+    announceMessage("Failed to load result image", "assertive");
   };
 
   // Get confidence icon and description
@@ -315,20 +306,22 @@ const Result: React.FC<ResultProps> = ({
             Detection Analysis
           </h3>
 
-          <div className={styles.denominationContainer}>
-            <h2
-              className={styles.denominationText}
-              aria-describedby="denomination-description"
-              role="status"
-            >
-              {denomination || "No Naira note detected"}
-            </h2>
-            <div id="denomination-description" className={styles.srOnly}>
-              {denomination
-                ? `Successfully identified a ${denomination} banknote`
-                : "The analysis could not identify any Nigerian naira banknote in this image"}
+          {confidence > 0.7 && (
+            <div className={styles.denominationContainer}>
+              <h2
+                className={styles.denominationText}
+                aria-describedby="denomination-description"
+                role="status"
+              >
+                {denomination || "No Naira note detected"}
+              </h2>
+              <div id="denomination-description" className={styles.srOnly}>
+                {denomination
+                  ? `Successfully identified a ${denomination} banknote`
+                  : "The analysis could not identify any Nigerian naira banknote in this image"}
+              </div>
             </div>
-          </div>
+          )}
 
           {denomination && (
             <div

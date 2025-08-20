@@ -16,7 +16,7 @@ interface UseSpeechReturn {
  * Custom hook for speech synthesis functionality
  */
 export function useSpeech(): UseSpeechReturn {
-  const autoSpeak = getPreference("autoSpeak", false);
+  const autoSpeak = getPreference("autoSpeak");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [supported, setSupported] = useState(false);
 

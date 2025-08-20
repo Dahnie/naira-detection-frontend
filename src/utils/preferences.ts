@@ -4,7 +4,7 @@ const STORAGE_KEY = "nairaScanPrefs";
 
 // Default preferences
 export const DEFAULT_PREFERENCES: AppPreferences = {
-  autoSpeak: true,
+  autoSpeak: false,
   speechRate: 1,
   speechPitch: 1,
 };

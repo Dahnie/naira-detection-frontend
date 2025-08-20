@@ -14,6 +14,7 @@ import {
 import { toastHandler } from "@utils/toastHandlerSingleton";
 import { useSpeech } from "@hooks/useSpeech";
 import Loader from "@components/loader/Loader";
+import { getPreference } from "@utils/preferences";
 
 // Types
 interface CameraProps {
@@ -43,6 +44,7 @@ const Camera: React.FC<CameraProps> = ({
 }) => {
   // Hooks
   const { speak: speakChange } = useSpeech();
+  const canSpeak = getPreference("autoSpeak");
   const {
     videoRef: cameraVideoRef,
     isStreamReady,
@@ -67,7 +69,7 @@ const Camera: React.FC<CameraProps> = ({
   // Utility functions
   const announceMessage = useCallback(
     (message: string, priority: "polite" | "assertive" = "polite") => {
-      announceToScreenReader(liveRegionRef, message, priority);
+      if (!canSpeak) announceToScreenReader(liveRegionRef, message, priority);
     },
     []
   );
@@ -553,7 +555,7 @@ const Camera: React.FC<CameraProps> = ({
       <button
         className={styles.uploadButton}
         onClick={handleUploadClick}
-        disabled={isLoading}
+        disabled={isLoading || isCapturing}
         aria-label="Upload image file from device"
         aria-describedby="upload-instructions"
         type="button"
@@ -599,7 +601,7 @@ const Camera: React.FC<CameraProps> = ({
         <li>
           Alternatively, press U or use upload button to select existing image
         </li>
-        <li>Press ? for keyboard shortcuts help</li>
+        {/* <li>Press ? for keyboard shortcuts help</li> */}
       </ul>
     </div>
   );

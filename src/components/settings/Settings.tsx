@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import styles from "./Settings.module.css";
-import { getPreference, savePreference } from "../../utils/preferences";
+import {
+  DEFAULT_PREFERENCES,
+  getPreference,
+  savePreference,
+} from "../../utils/preferences";
 import {
   announceToScreenReader,
   triggerVibration,
@@ -20,12 +24,6 @@ interface SettingsState {
 }
 
 // Constants
-const DEFAULT_SETTINGS: SettingsState = {
-  autoSpeak: true,
-  speechRate: 1,
-  speechPitch: 1,
-} as const;
-
 const SPEECH_RATE_RANGE = {
   MIN: 0.5,
   MAX: 2,
@@ -61,7 +59,7 @@ const MESSAGES = {
 
 const Settings: React.FC<SettingsProps> = ({ isOpen, onClose }) => {
   // State
-  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<SettingsState>(DEFAULT_PREFERENCES);
 
   // Refs
   const modalRef = useRef<HTMLDivElement>(null);
@@ -70,20 +68,21 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose }) => {
 
   // Hooks
   const { speak: speak } = useSpeech();
+  const canSpeak = getPreference("autoSpeak");
 
   // Utility functions
   const announceMessage = useCallback(
     (message: string, priority: "polite" | "assertive" = "polite") => {
-      announceToScreenReader(liveRegionRef, message, priority);
+      if (!canSpeak) announceToScreenReader(liveRegionRef, message, priority);
     },
     []
   );
 
   const loadPreferences = useCallback(() => {
     const loadedSettings: SettingsState = {
-      autoSpeak: getPreference("autoSpeak", DEFAULT_SETTINGS.autoSpeak),
-      speechRate: getPreference("speechRate", DEFAULT_SETTINGS.speechRate),
-      speechPitch: getPreference("speechPitch", DEFAULT_SETTINGS.speechPitch),
+      autoSpeak: getPreference("autoSpeak"),
+      speechRate: getPreference("speechRate"),
+      speechPitch: getPreference("speechPitch"),
     };
     setSettings(loadedSettings);
   }, []);
@@ -194,9 +193,9 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose }) => {
   );
 
   const resetToDefaults = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
+    setSettings(DEFAULT_PREFERENCES);
 
-    Object.entries(DEFAULT_SETTINGS).forEach(([key, value]) => {
+    Object.entries(DEFAULT_PREFERENCES).forEach(([key, value]) => {
       savePreference(key as keyof SettingsState, value);
     });
 
