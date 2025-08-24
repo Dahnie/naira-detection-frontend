@@ -4,6 +4,7 @@ interface UseCameraOptions {
   facingMode?: "environment" | "user";
   width?: number;
   height?: number;
+  quality?: number;
 }
 
 interface UseCameraReturn {
@@ -16,13 +17,11 @@ interface UseCameraReturn {
   stopCamera: () => void;
 }
 
-/**
- * Custom hook for camera functionality
- */
 export function useCamera({
   facingMode = "environment",
-  width = 1280,
-  height = 720,
+  width = 1920, // Increased from 1280
+  height = 1080, // Increased from 720
+  quality = 0.95,
 }: UseCameraOptions = {}): UseCameraReturn {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
@@ -38,29 +37,104 @@ export function useCamera({
 
     async function initCamera() {
       try {
-        // Stop any existing streams first
         if (mediaStream) {
           stopCamera();
         }
 
         setError(null);
 
-        // Request camera permissions
+        // Enhanced constraints for better quality
         const constraints: MediaStreamConstraints = {
           video: {
             facingMode: currentFacingMode,
-            width: { ideal: width },
-            height: { ideal: height },
+            width: {
+              min: 1280,
+              ideal: width,
+              max: 4096,
+            },
+            height: {
+              min: 720,
+              ideal: height,
+              max: 2160,
+            },
+            // Additional quality constraints
+            aspectRatio: { ideal: 16 / 9 },
+            frameRate: { ideal: 30, max: 60 },
           },
           audio: false,
         };
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        // Try to get the highest quality stream available
+        let stream: MediaStream;
+
+        try {
+          // First attempt with high quality settings
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (highQualityError) {
+          console.warn(
+            "High quality stream failed, trying fallback:",
+            highQualityError
+          );
+
+          // Fallback with more flexible constraints
+          const fallbackConstraints: MediaStreamConstraints = {
+            video: {
+              facingMode: currentFacingMode,
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: false,
+          };
+
+          stream = await navigator.mediaDevices.getUserMedia(
+            fallbackConstraints
+          );
+        }
 
         if (!mounted) {
-          // Clean up if component unmounted during async operation
           stream.getTracks().forEach((track) => track.stop());
           return;
+        }
+
+        // Log actual stream capabilities
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          const capabilities = videoTrack.getCapabilities();
+          const settings = videoTrack.getSettings();
+          console.log("Camera capabilities:", capabilities);
+          console.log("Current settings:", settings);
+
+          // Apply optimal settings if supported
+          const constraints: MediaTrackConstraints = {};
+
+          if (capabilities.width && capabilities.height) {
+            constraints.width = Math.min(
+              width,
+              capabilities.width.max || width
+            );
+            constraints.height = Math.min(
+              height,
+              capabilities.height.max || height
+            );
+          }
+
+          if (capabilities.frameRate) {
+            constraints.frameRate = Math.min(
+              30,
+              capabilities.frameRate.max || 30
+            );
+          }
+
+          // Apply the enhanced constraints
+          try {
+            await videoTrack.applyConstraints(constraints);
+            console.log("Enhanced constraints applied successfully");
+          } catch (constraintError) {
+            console.warn(
+              "Could not apply enhanced constraints:",
+              constraintError
+            );
+          }
         }
 
         setMediaStream(stream);
@@ -68,9 +142,13 @@ export function useCamera({
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
 
-          // Wait for video to be ready
           videoRef.current.onloadedmetadata = () => {
             if (mounted && videoRef.current) {
+              // Log actual video dimensions
+              console.log(
+                `Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
+              );
+
               videoRef.current
                 .play()
                 .then(() => setIsStreamReady(true))
@@ -94,15 +172,14 @@ export function useCamera({
 
     initCamera();
 
-    // Clean up on unmount
     return () => {
       mounted = false;
       stopCamera();
     };
-  }, [currentFacingMode]);
+  }, [currentFacingMode, width, height]);
 
   /**
-   * Capture current frame from video stream
+   * Enhanced image capture with better quality
    */
   const captureImage = async (): Promise<Blob | null> => {
     if (!videoRef.current || !isStreamReady) {
@@ -112,17 +189,32 @@ export function useCamera({
     try {
       const video = videoRef.current;
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
 
-      const ctx = canvas.getContext("2d");
+      // Use actual video dimensions for maximum quality
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+
+      const ctx = canvas.getContext("2d", {
+        alpha: false, // Better performance for photos
+        willReadFrequently: false,
+        desynchronized: true,
+      });
+
       if (!ctx) return null;
 
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Enhanced drawing with better quality settings
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
 
-      // Convert to blob
+      // Draw the current frame
+      ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+
+      // Convert to blob with higher quality
       return new Promise((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9);
+        canvas.toBlob((blob) => resolve(blob), "image/jpeg", quality);
       });
     } catch (err) {
       console.error("Error capturing image:", err);

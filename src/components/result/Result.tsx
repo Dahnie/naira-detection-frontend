@@ -306,7 +306,7 @@ const Result: React.FC<ResultProps> = ({
             Detection Analysis
           </h3>
 
-          {confidence > 0.7 && (
+          {confidence >= 0.7 && (
             <div className={styles.denominationContainer}>
               <h2
                 className={styles.denominationText}

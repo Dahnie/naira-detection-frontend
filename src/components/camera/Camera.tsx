@@ -1,12 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useCamera } from "@hooks/useCamera";
 import styles from "./Camera.module.css";
-import {
-  Camera as CameraIcon,
-  Upload,
-  RefreshCw,
-  FlipHorizontal,
-} from "lucide-react";
+import { Camera as CameraIcon, RefreshCw } from "lucide-react";
 import {
   announceToScreenReader,
   triggerVibration,
@@ -15,6 +10,9 @@ import { toastHandler } from "@utils/toastHandlerSingleton";
 import { useSpeech } from "@hooks/useSpeech";
 import Loader from "@components/loader/Loader";
 import { getPreference } from "@utils/preferences";
+import uploadIcon from "@assets/images/svg/upload.svg";
+import cameraIcon from "@assets/images/svg/camera.svg";
+import switchIcon from "@assets/images/svg/switch.svg";
 
 // Types
 interface CameraProps {
@@ -359,52 +357,62 @@ const Camera: React.FC<CameraProps> = ({
   }, [handleKeyDown]);
 
   // Render helpers
-  const renderErrorState = () => (
-    <div
-      className={styles.errorContainer}
-      role="alert"
-      aria-labelledby="error-title"
-    >
-      <h3 id="error-title" className={styles.srOnly}>
-        Camera Error
-      </h3>
+  const renderErrorState = useCallback(
+    () => (
+      <div
+        className={styles.errorContainer}
+        role="alert"
+        aria-labelledby="error-title"
+      >
+        <h3 id="error-title" className={styles.srOnly}>
+          Camera Error
+        </h3>
 
-      <div className={styles.errorIcon} aria-hidden="true">
-        <CameraIcon size={48} />
-      </div>
+        <div className={styles.errorIcon} aria-hidden="true">
+          <CameraIcon size={48} />
+        </div>
 
-      <p className={styles.errorMessage}>
-        {permissionDenied
-          ? "Camera access was denied. Please allow camera permissions in your browser settings, or use the upload option below to select an image file."
-          : error}
-      </p>
+        <p className={styles.errorMessage}>
+          {permissionDenied
+            ? "Camera access was denied. Please allow camera permissions in your browser settings, or use the upload option below to select an image file."
+            : error}
+        </p>
 
-      <div className={styles.errorActions}>
-        {!permissionDenied && (
+        <div className={styles.errorActions}>
+          {!permissionDenied && (
+            <button
+              className={styles.retryButton}
+              onClick={handleRetry}
+              aria-label="Retry camera access by reloading page"
+              type="button"
+            >
+              <RefreshCw size={20} aria-hidden="true" />
+              <span>Retry Camera</span>
+            </button>
+          )}
+
           <button
-            className={styles.retryButton}
-            onClick={handleRetry}
-            aria-label="Retry camera access by reloading page"
+            className={styles.secondaryActionButton}
+            onClick={handleUploadClick}
+            disabled={isLoading || isCapturing}
+            aria-label="Upload image file from device"
+            aria-describedby="upload-instructions"
             type="button"
           >
-            <RefreshCw size={20} aria-hidden="true" />
-            <span>Retry Camera</span>
+            {/* <Upload size={24} aria-hidden="true" /> */}
+            <img src={uploadIcon} alt="upload icon" aria-hidden={true} />
+            <span className={styles.buttonText}>Upload</span>
           </button>
-        )}
 
-        <button
-          className={styles.uploadButton}
-          onClick={handleUploadClick}
-          aria-label="Upload image file instead of using camera"
-          type="button"
-        >
-          <Upload size={20} aria-hidden="true" />
-          <span>Upload Image</span>
-        </button>
+          <div id="upload-instructions" className={styles.srOnly}>
+            Select an existing image file from your device. Accepts JPG, PNG and
+            other image formats. Also activated by U key.
+          </div>
+        </div>
       </div>
-    </div>
+    ),
+    [permissionDenied]
   );
-
   const renderVideoContainer = useCallback(() => {
     const loading = isLoading || isCapturing;
     return (
@@ -483,42 +491,10 @@ const Camera: React.FC<CameraProps> = ({
       role="toolbar"
       aria-label="Camera controls"
     >
-      {renderSecondaryControls()}
-      {renderActionButtons()}
-      {renderKeyboardInfo()}
-    </div>
-  );
-
-  const renderSecondaryControls = () => (
-    <div className={styles.secondaryControls}>
-      {/* <button
-        className={`${styles.controlButton} ${styles.flashButton}`}
-        onClick={handleFlashToggle}
-        aria-label={`${flashEnabled ? "Disable" : "Enable"} flash`}
-        aria-pressed={flashEnabled}
-        disabled={!isStreamReady}
-        type="button"
-      >
-        {flashEnabled ? (
-          <Zap size={20} aria-hidden="true" />
-        ) : (
-          <ZapOff size={20} aria-hidden="true" />
-        )}
-        <span className={styles.srOnly}>
-          Flash {flashEnabled ? "on" : "off"}
-        </span>
-      </button> */}
-
-      <button
-        className={`${styles.controlButton} ${styles.switchButton}`}
-        onClick={handleSwitchCamera}
-        aria-label="Switch between front and back camera"
-        disabled={!isStreamReady}
-        type="button"
-      >
-        <FlipHorizontal size={20} aria-hidden="true" />
-        <span className={styles.buttonLabel}>Switch</span>
-      </button>
+      <div className={styles.cameraControlsInner}>
+        {renderActionButtons()}
+        {renderKeyboardInfo()}
+      </div>
     </div>
   );
 
@@ -528,6 +504,26 @@ const Camera: React.FC<CameraProps> = ({
       role="group"
       aria-label="Main camera actions"
     >
+      {/* Upload */}
+      <button
+        className={styles.secondaryActionButton}
+        onClick={handleUploadClick}
+        disabled={isLoading || isCapturing}
+        aria-label="Upload image file from device"
+        aria-describedby="upload-instructions"
+        type="button"
+      >
+        {/* <Upload size={24} aria-hidden="true" /> */}
+        <img src={uploadIcon} alt="upload icon" aria-hidden={true} />
+        <span className={styles.buttonText}>Upload</span>
+      </button>
+
+      <div id="upload-instructions" className={styles.srOnly}>
+        Select an existing image file from your device. Accepts JPG, PNG and
+        other image formats. Also activated by U key.
+      </div>
+
+      {/* Camera Capture */}
       <button
         ref={captureButtonRef}
         className={`${styles.captureButton} ${
@@ -541,7 +537,7 @@ const Camera: React.FC<CameraProps> = ({
         aria-describedby="capture-instructions"
         type="button"
       >
-        <CameraIcon size={24} aria-hidden="true" />
+        <img src={cameraIcon} alt="upload icon" aria-hidden={true} />
         <span className={styles.buttonText}>
           {isCapturing ? "Capturing..." : "Capture"}
         </span>
@@ -552,21 +548,20 @@ const Camera: React.FC<CameraProps> = ({
         Also activated by spacebar or C key.
       </div>
 
+      {/* Switch Button */}
       <button
-        className={styles.uploadButton}
-        onClick={handleUploadClick}
+        className={`${styles.secondaryActionButton}`}
+        onClick={handleSwitchCamera}
+        aria-label="Switch between front and back camera"
         disabled={isLoading || isCapturing}
-        aria-label="Upload image file from device"
-        aria-describedby="upload-instructions"
         type="button"
       >
-        <Upload size={24} aria-hidden="true" />
-        <span className={styles.buttonText}>Upload</span>
+        <img src={switchIcon} alt="upload icon" aria-hidden={true} />
+        <span className={styles.buttonLabel}>Switch</span>
       </button>
 
-      <div id="upload-instructions" className={styles.srOnly}>
-        Select an existing image file from your device. Accepts JPG, PNG and
-        other image formats. Also activated by U key.
+      <div id="switch-instructions" className={styles.srOnly}>
+        Press to switch between front and back camera. Also activated by S key.
       </div>
     </div>
   );
