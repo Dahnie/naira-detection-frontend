@@ -156,7 +156,7 @@ const Home: React.FC = () => {
     [validateImageFile, announceMessage]
   );
 
-  const processImage = useCallback(async (imageBlob: Blob) => {
+  const processImage = async (imageBlob: Blob) => {
     setIsLoading(true);
     speak(MESSAGES.PROCESSING_WAIT);
     announceMessage(MESSAGES.PROCESSING_WAIT, "assertive");
@@ -175,6 +175,7 @@ const Home: React.FC = () => {
 
       setDetectionResult(result);
       setCurrentView("result");
+      triggerVibration();
       hasAnnouncedWelcome.current = false; // Reset for new view
     } catch (error) {
       console.error("Error processing image:", error);
@@ -186,7 +187,7 @@ const Home: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   const handleSpeakResult = useCallback(() => {
     if (!detectionResult) {
