@@ -4,6 +4,7 @@ import WarningHandler from "@components/toast-handler-components/warning-handler
 import { handleClearToastMessage } from "@hooks/useDisplayMessage";
 import { ToastHandlerContext } from "@contexts/ToastHandlerContext";
 import React, { useContext, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 // Interfaces
 interface ILayoutProps {
@@ -12,7 +13,7 @@ interface ILayoutProps {
 
 function Layout({ children }: ILayoutProps) {
   // Functions, States and Variables
-  const locationPathname = window.location.pathname;
+  const { pathname } = useLocation();
   const {
     errorHandlerObj,
     successHandlerObj,
@@ -31,7 +32,7 @@ function Layout({ children }: ILayoutProps) {
         setWarningHandlerObj
       );
     };
-  }, [locationPathname]);
+  }, [pathname]);
 
   return (
     <div className="app_page_container">

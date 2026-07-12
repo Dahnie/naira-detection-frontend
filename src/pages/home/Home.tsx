@@ -76,12 +76,14 @@ const Home: React.FC = () => {
   const hasAnnouncedWelcome = useRef(false); // Add this ref to track welcome message
   // Hooks
   const { speak, isSpeaking } = useSpeech();
-  const canSpeak = getPreference("autoSpeak");
 
   const announceMessage = useCallback(
     (message: string, priority: "polite" | "assertive" = "polite") => {
-      // So same message isn't announced multiple times
-      if (!canSpeak) announceToScreenReader(liveRegionRef, message, priority);
+      // When auto-speak is on, TTS already reads the message aloud, so the
+      // live region is skipped to avoid a screen reader announcing it twice.
+      if (!getPreference("autoSpeak")) {
+        announceToScreenReader(liveRegionRef, message, priority);
+      }
     },
     []
   );

@@ -1,78 +1,39 @@
 import { apiBaseUrl } from "@api/config";
 import { handleAPIError } from "./handleAPIError";
-
-export interface DetectionResult {
-  denominations: {
-    value: string;
-    confidence: number;
-  }[];
-  processedImage: Blob;
-}
+import type { DetectionResult } from "@models/Types";
 
 /**
- * Process image and detect naira notes
+ * Process an image and detect naira notes.
  * @param imageBlob - Image blob to process
- * @returns Promise with detection results
+ * @returns Detection result, or null if the request failed
  */
-
-export async function detectNairaNote(imageBlob: Blob) {
-  // ): Promise<DetectionResult> {
+export async function detectNairaNote(
+  imageBlob: Blob
+): Promise<DetectionResult | null> {
   try {
-    // Create form data for API request
     const formData = new FormData();
     formData.append("file", imageBlob);
 
-    // Call detection API
     const response = await fetch(`${apiBaseUrl}/api/detection/detect/image`, {
       method: "POST",
       body: formData,
     });
-    console.log({ response });
+
     if (!response.ok) {
       handleAPIError(response);
-      throw new Error(`Server returned ${response.status}`);
+      return null;
     }
 
-    const result = await response.json();
-    return result;
+    return (await response.json()) as DetectionResult;
   } catch (error) {
     console.error("Detection API error:", error);
     handleAPIError(error);
-
-    // For development/testing, return mock data when API fails
-    // This allows the UI to be developed without a working backend
-    // return createMockDetectionResult(imageBlob);
+    return null;
   }
 }
 
 /**
- * Create mock detection result for development/testing
- * @param originalImage - Original image blob
- * @returns Mock detection result
- */
-export function createMockDetectionResult(
-  originalImage: Blob
-): DetectionResult {
-  // Generate random confidence between 0.6 and 0.98
-  const confidence = 0.6 + Math.random() * 0.38;
-
-  // Randomly choose a denomination
-  const denominations = ["1000", "500", "200", "100", "50", "20", "10", "5"];
-  const randomIndex = Math.floor(Math.random() * denominations.length);
-
-  return {
-    denominations: [
-      {
-        value: denominations[randomIndex],
-        confidence,
-      },
-    ],
-    processedImage: originalImage,
-  };
-}
-
-/**
- * Create object URL from blob
+ * Create an object URL from a blob.
  * @param blob - Image blob
  * @returns Object URL
  */
@@ -81,7 +42,7 @@ export function createImageUrl(blob: Blob): string {
 }
 
 /**
- * Clean up object URL to prevent memory leaks
+ * Clean up an object URL to prevent memory leaks.
  * @param url - Object URL to revoke
  */
 export function revokeImageUrl(url: string | null): void {

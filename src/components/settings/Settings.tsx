@@ -68,12 +68,15 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose }) => {
 
   // Hooks
   const { speak: speak } = useSpeech();
-  const canSpeak = getPreference("autoSpeak");
 
   // Utility functions
   const announceMessage = useCallback(
     (message: string, priority: "polite" | "assertive" = "polite") => {
-      if (!canSpeak) announceToScreenReader(liveRegionRef, message, priority);
+      // When auto-speak is on, TTS already reads the message aloud, so the
+      // live region is skipped to avoid a screen reader announcing it twice.
+      if (!getPreference("autoSpeak")) {
+        announceToScreenReader(liveRegionRef, message, priority);
+      }
     },
     []
   );

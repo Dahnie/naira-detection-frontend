@@ -42,7 +42,6 @@ const Camera: React.FC<CameraProps> = ({
 }) => {
   // Hooks
   const { speak: speakChange } = useSpeech();
-  const canSpeak = getPreference("autoSpeak");
   const {
     videoRef: cameraVideoRef,
     isStreamReady,
@@ -54,7 +53,6 @@ const Camera: React.FC<CameraProps> = ({
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const captureButtonRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +65,11 @@ const Camera: React.FC<CameraProps> = ({
   // Utility functions
   const announceMessage = useCallback(
     (message: string, priority: "polite" | "assertive" = "polite") => {
-      if (!canSpeak) announceToScreenReader(liveRegionRef, message, priority);
+      // When auto-speak is on, TTS already reads the message aloud, so the
+      // live region is skipped to avoid a screen reader announcing it twice.
+      if (!getPreference("autoSpeak")) {
+        announceToScreenReader(liveRegionRef, message, priority);
+      }
     },
     []
   );
@@ -209,7 +211,7 @@ const Camera: React.FC<CameraProps> = ({
       const message = "Switching camera...";
       announceAndSpeak(message, "polite");
       triggerVibration(VIBRATION_PATTERNS.GENERAL);
-    } catch (err) {
+    } catch {
       announceMessage("Failed to switch camera", "assertive");
     }
   }, [isStreamReady, switchCamera, announceAndSpeak, announceMessage]);
@@ -307,12 +309,6 @@ const Camera: React.FC<CameraProps> = ({
 
   // Effects
   useEffect(() => {
-    if (cameraVideoRef.current && videoRef.current) {
-      videoRef.current = cameraVideoRef.current;
-    }
-  }, [cameraVideoRef]);
-
-  useEffect(() => {
     const handleFirstInteraction = () => {
       if (!hasUserInteracted) {
         setHasUserInteracted(true);
@@ -343,11 +339,6 @@ const Camera: React.FC<CameraProps> = ({
 
       setPermissionDenied(error.includes("permission"));
       announceAndSpeak(errorMessage, "assertive");
-    } else if (isStreamReady) {
-      console.log({ message: "Camera stream is ready." });
-      // const message =
-      //   "Camera is ready. You can now capture images of naira notes.";
-      // announceAndSpeak(message, "polite");
     }
   }, [error, isStreamReady]);
 

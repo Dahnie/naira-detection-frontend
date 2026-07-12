@@ -100,9 +100,6 @@ export function useCamera({
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack) {
           const capabilities = videoTrack.getCapabilities();
-          const settings = videoTrack.getSettings();
-          console.log("Camera capabilities:", capabilities);
-          console.log("Current settings:", settings);
 
           // Apply optimal settings if supported
           const constraints: MediaTrackConstraints = {};
@@ -128,7 +125,6 @@ export function useCamera({
           // Apply the enhanced constraints
           try {
             await videoTrack.applyConstraints(constraints);
-            console.log("Enhanced constraints applied successfully");
           } catch (constraintError) {
             console.warn(
               "Could not apply enhanced constraints:",
@@ -144,11 +140,6 @@ export function useCamera({
 
           videoRef.current.onloadedmetadata = () => {
             if (mounted && videoRef.current) {
-              // Log actual video dimensions
-              console.log(
-                `Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
-              );
-
               videoRef.current
                 .play()
                 .then(() => setIsStreamReady(true))
